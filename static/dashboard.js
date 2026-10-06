@@ -350,6 +350,65 @@ function tabPromo(d) {
   return { html: h, setelah: () => {} };
 }
 
+// ---------------------------------------------------------------- tab Membership
+function tabMembership(d) {
+  const m = d.membership;
+  if (!m.tersedia) {
+    return { html: `<div class="kartu kosong">Tidak diketahui — ${esc(m.alasan)}. Unggah CSV ekspor web loyalty di <a href="#upload">Upload</a>.</div>`, setelah: () => {} };
+  }
+  const k = m.kartu;
+  let h = `<h2>Member (potret Rekap Pelanggan)</h2><div class="kisi-kartu">
+    ${kartuAngka("Total member (semua cabang)", k.total_member)}
+    ${kartuAngka("Terverifikasi OTP", k.terverifikasi)}
+    ${kartuAngka("Member baru terverifikasi", k.terverifikasi_baru)}
+    ${kartuAngka(`Pernah transaksi di ${d.cabang}`, k.pernah_transaksi)}
+    ${kartuAngka("Repeat sejak bergabung (≥2 transaksi)", k.repeat_sejak_gabung)}
+  </div>`;
+  if (!m.berkala) return { html: h + `<div class="kartu kosong">Data loyalty berkala (transaksi, rekap harian, klaim, log) belum ada untuk periode ini.</div>`, setelah: () => {} };
+  h += `<h2>Periode ini</h2><div class="kisi-kartu">
+    ${kartuAngka("Member baru (semua cabang)", k.member_baru)}
+    ${kartuAngka("Member baru didaftarkan kasir cabang ini", k.member_baru_cabang)}
+    ${kartuAngka("Member bertransaksi", k.member_aktif)}
+    ${kartuAngka("Member repeat (≥2 transaksi di periode)", k.repeat)}
+    ${kartuAngka("Bill lewat member", k.bill_member)}
+    ${kartuAngka("Omzet lewat member", k.omzet_member, "Basis Grand Total")}
+    ${kartuAngka("Porsi bill member dari total bill", k.porsi_bill)}
+    ${kartuAngka("Porsi omzet member dari total omzet", k.porsi_omzet)}
+    ${kartuAngka("Stempel diberikan", k.stempel)}
+    ${kartuAngka("Klaim hadiah", k.klaim)}
+  </div>`;
+  if (m.rata_bill) {
+    const r = m.rata_bill;
+    h += `<h2>Rata-rata bill F&amp;B: member vs non-member</h2><div class="kisi-kartu">
+      ${kartuAngka(`Member (${r.n_member} bill)`, r.member)}
+      ${kartuAngka(`Non-member (${r.n_non} bill)`, r.non_member)}
+    </div><p class="catatan">Selisih <span class="${esc(r.selisih.arah)}">${esc(r.selisih.teks)} (${esc(r.selisih.persen)})</span>.
+      ${r.sampel_kecil ? "<b>Sampel member kecil (&lt; 10 bill); jangan disimpulkan.</b>" : ""}
+      Bill member = bill ESB yang tercocokkan dengan transaksi loyalty.</p>`;
+  }
+  h += bagianBanding(m.banding);
+  h += `<h2>Kualitas pendaftaran &amp; pencatatan</h2><div class="kartu">`;
+  const q = m.kualitas;
+  if (!q.tersedia) h += `<p class="catatan">Log Aktivitas belum diunggah; tanda pendaftaran tidak diketahui.</p>`;
+  else {
+    h += `<p>${q.daftar} pendaftaran tercatat di log cabang ini · tanda <b>beruntun ${q.beruntun}</b> · tanda <b>janggal ${q.janggal}</b>.</p>
+      ${q.rincian.length ? tabel(q.rincian) : ""}`;
+  }
+  h += `<h3 class="sub-judul">Transaksi member tanpa pasangan bill ESB (${q.tanpa_esb.length})</h3>
+    ${!q.esb_ada ? "<p class='catatan'>Tidak bisa dicek: data ESB periode ini belum ada.</p>" : q.tanpa_esb.length ? tabel(q.tanpa_esb) : "<p class='catatan'>Semua transaksi member punya pasangan bill ESB.</p>"}
+    <h3 class="sub-judul">Kemungkinan dicatat ganda (${q.ganda.length})</h3>
+    ${q.ganda.length ? tabel(q.ganda) : "<p class='catatan'>Tidak ada.</p>"}
+    <ul class="catatan">${q.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
+  h += `<h2>Rincian per kasir</h2><div class="kartu">${m.per_kasir.length ? tabel(m.per_kasir) : "<p class='catatan'>Tidak ada aktivitas kasir.</p>"}</div>`;
+  h += `<h2>Klaim hadiah &amp; promo eksklusif</h2><div class="kartu">${m.hadiah.length ? tabel(m.hadiah) : "<p class='catatan'>Tidak ada klaim hadiah.</p>"}
+    <p class="catatan">Promo eksklusif member (dari Log Aktivitas): ${m.eksklusif.klaim} klaim, ${m.eksklusif.diserahkan} diserahkan.</p></div>`;
+  h += `<h2>Harian</h2><div class="kartu">${tabel(m.harian)}</div>`;
+  h += `<h2>Customer Data Report ESB</h2><div class="kartu kosong">${esc(m.customer_data_esb.alasan)}</div>`;
+  h += `<ul class="catatan"><li>Nomor WA tidak disimpan di aplikasi ini; yang disimpan hanya sidik (hash) untuk menghitung member berulang.</li>
+    <li>Nominal Bill di web loyalty terbukti memakai basis Grand Total ESB.</li></ul>`;
+  return { html: h, setelah: () => {} };
+}
+
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
   const q = d.kualitas;
@@ -452,6 +511,7 @@ function render() {
   else if (keadaan.tab === "foot") hasil = tabFoot(d);
   else if (["makanan", "kudapan", "minuman"].includes(keadaan.tab)) hasil = tabMenu(d, keadaan.tab);
   else if (keadaan.tab === "promo") hasil = tabPromo(d);
+  else if (keadaan.tab === "membership") hasil = tabMembership(d);
   else {
     const m = d.menyusul.find((x) => x.kode === keadaan.tab);
     hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };

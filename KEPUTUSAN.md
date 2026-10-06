@@ -129,3 +129,36 @@ dashboard menampilkan peringatan sampai user mencentang "sudah dicocokkan".
   cabang lain).
 - Promotion Report, Staff Sales & Cancel, dan Cancel Menu Detail belum
   diolah; semua angka promo saat ini dari kolom Promotion di Bill Report.
+
+## Loyalty & tab Membership (tahap 7)
+
+- "Discount Karyawan 10 %" dan "Discount BOD" = diskon internal (dikonfirmasi user).
+- CSV loyalty dibaca dari isinya (header), UTF-8 BOM, kolom `Cabang` wajib
+  (sudah ada sejak perbaikan ekspor web loyalty). File kosong: cabang dari nama file.
+- Upload ESB dan loyalty disatukan: .xlsx = ESB, .csv = dikenali dari isi.
+  Unggahan boleh hanya loyalty; cek ESB hanya berjalan bila ada file ESB.
+- **Privasi**: nomor WA tidak disimpan, hanya sidik SHA-256 (nomor
+  dinormalkan ke 08xx). Nama member, catatan pesanan, alergi, menu favorit,
+  IP member, dan nama/nomor di keterangan log tidak disimpan.
+- **Nominal Bill loyalty = Grand Total ESB** (terbukti: 49 dari 54
+  transaksi 28 Sep – 4 Okt cocok persis; tidak ada yang cocok ke Subtotal).
+- Setiap transaksi member dicocokkan ke satu bill ESB (cabang & tanggal
+  sama, GT selisih ≤ Rp1, jam masuk terdekat sebelumnya). Yang tidak punya
+  pasangan dan yang tercatat ganda (member, tanggal, nominal sama) tampil di
+  bagian kualitas.
+- Validasi loyalty: Rekap Harian = Riwayat Transaksi per hari (bill,
+  omzet, stempel). Riwayat Klaim boleh lebih banyak dari Rekap Harian
+  (klaim staf tidak dihitung di Rekap Harian).
+- Total member/terverifikasi/pernah transaksi dari potret Rekap Pelanggan
+  (tanggal potret = tanggal di nama file); dipakai potret terdekat ≥ akhir
+  periode, kalau tidak ada potret terakhir dengan catatan.
+- Member baru = Σ "Member Baru (semua cabang)" Rekap Harian (lintas
+  cabang); per cabang = "didaftarkan kasir cabang ini".
+- Rata-rata bill member vs non-member = bill F&B ESB (Grand Total) yang
+  tercocokkan vs sisanya; sampel < 10 bill diberi tanda.
+
+Temuan data asli (Rungkut, 28 Sep – 4 Okt): 6 transaksi member tanpa
+pasangan bill ESB, termasuk 1 nominal Rp592.900 yang dicatat 2× (14:37
+dan 15:01) untuk member yang sama padahal di ESB hanya ada 1 bill; 5 lainnya
+dicatat AISHA pukul 15:20–15:24 pada hari yang sama dengan tanda
+pendaftaran beruntun di log Mawar.

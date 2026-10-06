@@ -24,9 +24,10 @@
 
 <!-- ================= UPLOAD ================= -->
 <section id="hal-upload" class="hal" hidden>
-  <h1>Upload data ESB</h1>
-  <p class="sub">Unggah Bill Report dan Sales Menu COGS Report untuk periode yang sama. Satu file boleh berisi
-    Rungkut dan Mawar sekaligus. Data baru disimpan setelah Anda membaca laporan validasi dan menekan <b>Simpan</b>.</p>
+  <h1>Upload data</h1>
+  <p class="sub">Unggah Bill Report dan Sales Menu COGS Report (.xlsx) untuk periode yang sama, dan/atau CSV ekspor
+    web loyalty Keluarga Ampyang. Semua file boleh diunggah sekaligus; jenisnya dikenali dari isi. Satu file ESB boleh
+    berisi Rungkut dan Mawar sekaligus. Data baru disimpan setelah Anda membaca laporan validasi dan menekan <b>Simpan</b>.</p>
 
   <form id="form-unggah" class="kartu">
     <div class="baris-isian">
@@ -41,8 +42,8 @@
       <label>Tanggal akhir <input type="date" name="akhir" required></label>
     </div>
     <label class="zona" id="zona">
-      <input type="file" name="files" multiple accept=".xlsx" id="input-file">
-      <span class="zona-judul">Tarik file .xlsx ke sini, atau klik untuk memilih</span>
+      <input type="file" name="files" multiple accept=".xlsx,.csv" id="input-file">
+      <span class="zona-judul">Tarik file .xlsx / .csv ke sini, atau klik untuk memilih</span>
       <span class="zona-daftar" id="daftar-file">Belum ada file dipilih.</span>
     </label>
     <div class="aksi">

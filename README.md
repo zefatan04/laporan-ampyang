@@ -8,11 +8,11 @@ Prinsip utama: **angka yang salah lebih buruk daripada angka yang kosong.**
 Data yang tidak ada atau tidak cocok ditampilkan sebagai "Tidak diketahui"
 beserta alasannya.
 
-> Status: tahap 6 dari 10. Sudah bisa: upload Bill Report + COGS Report,
+> Status: tahap 7 dari 10. Sudah bisa: upload Bill Report + COGS Report,
 > laporan validasi, simpan, riwayat data, dashboard tab Overview Omzet,
-> Makanan, Kudapan, Minuman, Foot Traffic, dan Promo (mingguan M1–M5 +
-> Bulan Penuh) dengan tombol "Dari mana angka ini?", panel kualitas data,
-> dan Pengaturan. Tab Membership dan Sosmed menyusul.
+> Makanan, Kudapan, Minuman, Foot Traffic, Promo, dan Membership (mingguan
+> M1–M5 + Bulan Penuh) dengan tombol "Dari mana angka ini?", panel kualitas
+> data, dan Pengaturan. Tab Sosmed menyusul.
 
 ## Memasang (Windows)
 
@@ -32,6 +32,12 @@ Tutup jendela hitam untuk mematikan aplikasi. Data tersimpan di `data\ampyang.du
 
 Keduanya dengan periode yang **sama persis**. Boleh memilih dua cabang
 sekaligus dalam satu export.
+
+### Export dari web loyalty (setiap minggu, periode sama)
+
+Dari halaman Ekspor di panel pemilik, per cabang (buka subdomain cabangnya):
+Riwayat Transaksi, Riwayat Klaim, Rekap Harian, Log Aktivitas, dan Rekap
+Pelanggan. Semua CSV boleh diunggah sekaligus bersama file ESB.
 
 ## Mengecek file ESB lewat terminal (tanpa menyimpan)
 

@@ -238,6 +238,12 @@ def riwayat(con, cabang_semua=("Rungkut", "Mawar")) -> dict:
     periode = [dict(zip(kunci, r)) for r in rows]
     for p in periode:
         p["hari_tutup"] = json.loads(p["hari_tutup"])
+        p["sumber"] = "esb"
+    from app import db_loyalty  # impor di sini: db_loyalty bergantung pada modul ini
+    loy = db_loyalty.riwayat(con)
+    for p in loy["periode"]:
+        periode.append({**p, "jenis": "loyalty", "sumber": "loyalty", "hari_tutup": [], "hari_parsial": None,
+                        "jumlah_baris": None, "file_jenis": p["jenis"]})
 
     minggu = []
     if periode:
@@ -248,7 +254,7 @@ def riwayat(con, cabang_semua=("Rungkut", "Mawar")) -> dict:
             hari = [m + timedelta(days=i) for i in range(7)]
             sel = {}
             for c in cabang_semua:
-                for j in ("bill", "cogs"):
+                for j in ("bill", "cogs", "loyalty"):
                     cocok = [p for p in periode if p["cabang"] == c and p["jenis"] == j
                              and p["awal"] <= hari[-1] and p["akhir"] >= hari[0]]
                     tercakup = {t for t in hari for p in cocok if p["awal"] <= t <= p["akhir"]}
@@ -270,4 +276,5 @@ def riwayat(con, cabang_semua=("Rungkut", "Mawar")) -> dict:
                     sel[f"{c}|{j}"] = {"status": status, "keterangan": ket}
             minggu.append({"senin": m, "minggu": hari[-1], "sel": sel})
             m -= timedelta(days=7)
-    return {"periode": periode, "minggu": minggu, "cabang": list(cabang_semua)}
+    return {"periode": periode, "minggu": minggu, "cabang": list(cabang_semua),
+            "jenis": ["bill", "cogs", "loyalty"], "snapshot_loyalty": loy["snapshot"]}

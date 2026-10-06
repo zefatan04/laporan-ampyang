@@ -171,7 +171,7 @@ function tampilkanValidasi(h) {
 }
 
 // ------------------------------------------------------------------ riwayat
-const NAMA_JENIS = { bill: "Bill", cogs: "COGS" };
+const NAMA_JENIS = { bill: "Bill", cogs: "COGS", loyalty: "Loyalty" };
 
 async function muatRiwayat() {
   const elM = document.getElementById("riwayat-minggu");
@@ -186,7 +186,7 @@ async function muatRiwayat() {
     elP.innerHTML = "";
     return;
   }
-  const kolom = r.cabang.flatMap((c) => ["bill", "cogs"].map((j) => [c, j]));
+  const kolom = r.cabang.flatMap((c) => r.jenis.map((j) => [c, j]));
   elM.innerHTML = `<div class="kartu"><div class="gulir"><table class="tabel-minggu tumpuk">
     <thead><tr><th>Minggu</th>${kolom.map(([c, j]) => `<th>${esc(c)} · ${NAMA_JENIS[j]}</th>`).join("")}</tr></thead>
     <tbody>${r.minggu.map((m) => `<tr><th>${tgl(m.senin)} – ${tgl(m.minggu)}</th>${kolom.map(([c, j]) => {
@@ -194,34 +194,36 @@ async function muatRiwayat() {
       return `<td data-label="${esc(c)} · ${NAMA_JENIS[j]}">${lencana(s.status)}<span class="ket">${esc(s.keterangan)}</span></td>`;
     }).join("")}</tr>`).join("")}</tbody></table></div></div>`;
 
-  // Satu baris per unggahan per cabang (Bill + COGS selalu berpasangan).
+  // Satu baris per unggahan per cabang (Bill + COGS selalu berpasangan; loyalty terpisah).
   const grup = new Map();
   r.periode.forEach((p) => {
-    const k = `${p.unggahan_id}|${p.cabang}`;
+    const k = `${p.sumber}|${p.unggahan_id}|${p.cabang}`;
     if (!grup.has(k)) grup.set(k, { ...p, baris: {} });
     grup.get(k).baris[p.jenis] = p.jumlah_baris;
   });
   elP.innerHTML = `<div class="kartu"><div class="gulir"><table class="tumpuk"><thead><tr>
-      <th>Cabang · Periode</th><th class="angka">Baris Bill</th><th class="angka">Baris COGS</th>
+      <th>Cabang · Sumber · Periode</th><th class="angka">Baris Bill</th><th class="angka">Baris COGS / file loyalty</th>
       <th>Catatan</th><th>Diunggah</th><th>Tindakan</th></tr></thead><tbody>
     ${[...grup.values()].map((g) => `<tr>
-      <th>${esc(g.cabang)} · ${tgl(g.awal)} – ${tgl(g.akhir)}</th>
-      <td class="angka" data-label="Baris Bill">${(g.baris.bill ?? 0).toLocaleString("id-ID")}</td>
-      <td class="angka" data-label="Baris COGS">${(g.baris.cogs ?? 0).toLocaleString("id-ID")}</td>
+      <th>${esc(g.cabang)} · ${g.sumber === "loyalty" ? "Loyalty" : "ESB"} · ${tgl(g.awal)} – ${tgl(g.akhir)}</th>
+      <td class="angka" data-label="Baris Bill">${g.sumber === "loyalty" ? "-" : (g.baris.bill ?? 0).toLocaleString("id-ID")}</td>
+      <td class="angka" data-label="Baris COGS">${g.sumber === "loyalty" ? esc((g.file_jenis || []).join(", ")) : (g.baris.cogs ?? 0).toLocaleString("id-ID")}</td>
       <td data-label="Catatan">${[g.rekonsiliasi_gagal ? "rekonsiliasi tidak cocok" : "",
              g.hari_parsial ? `hari parsial ${tgl(g.hari_parsial)}` : "",
              g.hari_tutup.length ? `${g.hari_tutup.length} hari tutup` : ""].filter(Boolean).map(esc).join(" · ") || "-"}</td>
       <td data-label="Diunggah">${esc(String(g.waktu).slice(0, 16).replace("T", " "))}</td>
       <td><div class="aksi" style="margin:0">
         <a class="tombol" href="#upload?awal=${esc(g.awal)}&akhir=${esc(g.akhir)}">Unggah ulang</a>
-        <button class="tombol bahaya" data-hapus="${esc(g.unggahan_id)}|${esc(g.cabang)}">Hapus</button></div></td>
+        <button class="tombol bahaya" data-hapus="${esc(g.sumber)}|${esc(g.unggahan_id)}|${esc(g.cabang)}">Hapus</button></div></td>
     </tr>`).join("")}</tbody></table></div></div>`;
 
   elP.querySelectorAll("[data-hapus]").forEach((b) => b.addEventListener("click", async () => {
-    const [id, cabang] = b.dataset.hapus.split("|");
-    if (!confirm(`Hapus data ${cabang} periode ini (Bill dan COGS)? Tindakan ini tidak bisa dibatalkan.`)) return;
+    const [sumber, id, cabang] = b.dataset.hapus.split("|");
+    const isi = sumber === "loyalty" ? "data loyalty" : "Bill dan COGS";
+    if (!confirm(`Hapus ${isi} ${cabang} periode ini? Tindakan ini tidak bisa dibatalkan.`)) return;
+    const url = sumber === "loyalty" ? "/api/periode-loyalty" : "/api/periode";
     try {
-      await api(`/api/periode/${encodeURIComponent(id)}/${encodeURIComponent(cabang)}`, { method: "DELETE" });
+      await api(`${url}/${encodeURIComponent(id)}/${encodeURIComponent(cabang)}`, { method: "DELETE" });
       muatRiwayat();
     } catch (e) { alert(e.message); }
   }));
