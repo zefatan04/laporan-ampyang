@@ -16,7 +16,13 @@ BAWAAN = {
     "ramadan": [{"awal": a, "akhir": z} for a, z in B.RAMADAN],
     "hari_libur_terverifikasi": False,
     "target_omzet": {},
-    "menu_baru": [],  # [{"nama": "Tahu Walik", "mulai": "2026-09-01", "tab": "kudapan"}]  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
+    "menu_baru": [],
+    # [{"nama", "mulai", "selesai", "cabang": Rungkut|Mawar|keduanya, "promotion_esb": [...], "menu_promo": [...]}]
+    "promo": [],
+    # Nama di kolom Promotion ESB yang bukan promo pemasaran (tidak dinilai).
+    "promotion_internal": ["Discount Karyawan 10 %", "Discount BOD"],
+    # Selisih omzet terhadap pembanding di dalam ±ambang dianggap Netral.
+    "ambang_netral_persen": 5,  # [{"nama": "Tahu Walik", "mulai": "2026-09-01", "tab": "kudapan"}]  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
 }
 
 
@@ -86,6 +92,28 @@ def periksa(kunci: str, nilai):
                 raise ValueError("Nama menu baru kosong.")
             hasil.append({"nama": str(x["nama"]).strip(), "mulai": x["mulai"], "tab": x["tab"]})
         return hasil
+    if kunci == "promo":
+        hasil = []
+        for x in nilai or []:
+            nama = str(x.get("nama", "")).strip()
+            if not nama:
+                raise ValueError("Nama promo kosong.")
+            a, z = date.fromisoformat(x["mulai"]), date.fromisoformat(x["selesai"])
+            if z < a:
+                raise ValueError(f"Promo {nama}: tanggal selesai lebih awal dari mulai.")
+            if x.get("cabang") not in ("Rungkut", "Mawar", "keduanya"):
+                raise ValueError(f"Promo {nama}: cabang harus Rungkut, Mawar, atau keduanya.")
+            bersih = lambda xs: [" ".join(str(v).split()) for v in (xs or []) if str(v).strip()]
+            hasil.append({"nama": nama, "mulai": x["mulai"], "selesai": x["selesai"], "cabang": x["cabang"],
+                          "promotion_esb": bersih(x.get("promotion_esb")), "menu_promo": bersih(x.get("menu_promo"))})
+        return hasil
+    if kunci == "promotion_internal":
+        return [" ".join(str(v).split()) for v in (nilai or []) if str(v).strip()]
+    if kunci == "ambang_netral_persen":
+        v = float(nilai)
+        if not 0 <= v <= 50:
+            raise ValueError("Ambang netral harus 0–50%.")
+        return v
     if kunci == "kategori":
         if set(nilai) != set(BAWAAN["kategori"]):
             raise ValueError("Kunci kategori tidak lengkap.")

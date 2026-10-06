@@ -96,7 +96,7 @@
 <!-- ================= PENGATURAN ================= -->
 <section id="hal-pengaturan" class="hal" hidden>
   <h1>Pengaturan</h1>
-  <p class="sub">Perubahan langsung berlaku ke semua data, termasuk data lama. Daftar promo, menu baru, dan anggaran iklan ditambahkan di tahap 6 dan 8.</p>
+  <p class="sub">Perubahan langsung berlaku ke semua data, termasuk data lama. Anggaran iklan per kampanye ditambahkan di tahap 8.</p>
 
   <div class="kartu" id="set-libur">
     <h2 class="tanpa-jarak">Hari libur nasional &amp; Ramadan</h2>
@@ -113,6 +113,20 @@
     <p class="catatan">Kosongkan bila tidak ada target; dashboard tidak menampilkan target yang tidak diisi. Satu baris: <code>Cabang YYYY-MM angka</code>, mis. <code>Rungkut 2026-10 250000000</code>.</p>
     <textarea rows="4" id="isi-target"></textarea>
     <div class="aksi"><button class="tombol utama" data-simpan="target">Simpan target</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Daftar promo</h2>
+    <p class="catatan">Satu baris per promo:
+      <code>Nama | mulai YYYY-MM-DD | selesai YYYY-MM-DD | Rungkut/Mawar/keduanya | nama di kolom Promotion ESB | menu promo</code>.
+      Kolom terakhir dan kedua terakhir boleh kosong; beberapa nilai dipisah titik koma.
+      Contoh: <code>Serbuk Hemat | 2026-09-15 | 2026-10-15 | keduanya | PROMO MEMBERSHIP SERBUK HEMAT | Mie Goreng Ayam Jamur; Nasi Goreng Ham Spesial</code></p>
+    <textarea rows="5" id="isi-promo"></textarea>
+    <label>Nama Promotion ESB yang bukan promo pemasaran (diskon internal), dipisah titik koma
+      <input id="isi-internal" class="isian-penuh"></label>
+    <label>Ambang netral (%): selisih omzet terhadap pembanding di dalam ± ambang dianggap Netral
+      <input id="isi-ambang" type="number" min="0" max="50" step="0.5" class="isian-pendek"></label>
+    <div class="aksi"><button class="tombol utama" data-simpan="promo">Simpan promo</button><span class="hasil"></span></div>
   </div>
 
   <div class="kartu">

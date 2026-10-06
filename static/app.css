@@ -195,3 +195,5 @@ h2.tanpa-jarak { margin-top: 0; }
 .kisi-isian input { font: inherit; padding: .4rem .5rem; border: 1px solid var(--garis); border-radius: 8px; min-width: 0; }
 .hasil { font-size: .88rem; }
 code { background: var(--abu-muda); padding: 0 .25rem; border-radius: 4px; }
+.isian-penuh, .isian-pendek { font: inherit; padding: .4rem .5rem; border: 1px solid var(--garis); border-radius: 8px; color: var(--teks); }
+.isian-pendek { max-width: 8rem; }

@@ -100,3 +100,32 @@ dashboard menampilkan peringatan sampai user mencentang "sudah dicocokkan".
   tinggi (> 1,5×). Contoh nyata: Juice Jambu HPP Rp21–32 per gelas untuk
   harga Rp18.900; Teh O Panas HPP Rp286–388 untuk harga Rp13.000.
 - Definisi attach rate (pembagi = bill F&B) **dikonfirmasi user**.
+
+## Tab Promo (tahap 6)
+
+- Promo didaftarkan di Pengaturan: nama, mulai, selesai, cabang
+  (Rungkut/Mawar/keduanya), nama di kolom Promotion ESB, menu promo.
+- **Pembanding A** = rata-rata hari yang sama dalam seminggu dari 4 minggu
+  sebelum promo. **Pembanding B** = 4 minggu sebelum + 4 minggu sesudah
+  (bila ada datanya). Hari libur/Ramadan, tutup, parsial, dan tanpa data
+  tidak dipakai, baik sebagai pembanding maupun sebagai hari promo yang dinilai.
+- **Kesimpulan** memakai omzet cabang (Grand Total) di hari promo vs
+  pembanding, sisi **pesimis** dari A/B. Ambang netral ±5% (Pengaturan).
+  Menambah: pesimis > +5%. Mengurangi: optimis < −5%. Netral: keduanya di
+  dalam ±5%. Selain itu, atau pembanding A < 14 hari buka, atau < 50% hari
+  promo punya pembanding: **Belum bisa disimpulkan** dengan alasan.
+- Tanda kanibalisasi: menu promo naik sementara omzet menu non-promo turun
+  lebih dari ambang.
+- Kolom Promotion ESB yang dianggap **internal** (tidak dinilai): bawaan
+  "Discount Karyawan 10 %" dan "Discount BOD"; bisa diubah di Pengaturan.
+- Total diskon per promo hanya dari bill yang memakai satu promo; bill
+  dengan beberapa promo dihitung terpisah.
+- "Menu kena diskon menu" hanya dari bill yang diskonnya murni diskon menu,
+  karena Discount Total di COGS juga berisi alokasi diskon bill.
+- **Paket**: HPP = Σ COGS item pendamping Rp0 di bill yang sama; harga
+  normal isi = modus harga jual berbayar item itu di semua data cabang ini;
+  rincian hanya dari bill berisi tepat 1 paket. Harga normal item yang tidak
+  pernah dijual berbayar di cabang itu = tidak diketahui (tidak dipinjam dari
+  cabang lain).
+- Promotion Report, Staff Sales & Cancel, dan Cancel Menu Detail belum
+  diolah; semua angka promo saat ini dari kolom Promotion di Bill Report.

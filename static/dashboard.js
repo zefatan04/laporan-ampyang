@@ -284,6 +284,72 @@ function tabMenu(d, kode) {
   return { html: h, setelah: () => {} };
 }
 
+// ---------------------------------------------------------------- tab Promo
+const WARNA_LABEL = { "Menambah omzet": "lulus", "Netral": "tidak_bisa", "Mengurangi omzet": "gagal", "Belum bisa disimpulkan": "peringatan" };
+
+function kartuPromo(e) {
+  const k = e.kesimpulan;
+  const bp = e.bill_promo ? tabel([e.bill_promo]) : `<p class="catatan">Angka bill promo: Tidak diketahui — ${esc(e.bill_promo_alasan)}.</p>`;
+  const banding = e.banding && e.hari_dibandingkan === 0
+    ? `<p class="catatan">Perbandingan dengan pembanding: Tidak diketahui — belum ada hari promo yang punya pembanding hari yang sama (lihat alasan di atas).</p>`
+    : e.banding ? `<h3 class="sub-judul">Dibanding pembanding (rata-rata hari yang sama dalam seminggu)</h3>
+    ${tabel(e.banding.map((r) => ({ Metrik: r.metrik, "A: 4 minggu sebelum": r.A, "B: 4 minggu sebelum + 4 minggu sesudah": r.B })))}
+    <ul class="catatan">
+      <li>${e.hari_dibandingkan} hari promo dibandingkan.${e.hari_tanpa_pembanding.length ? " Tanpa pembanding hari yang sama: " + esc(e.hari_tanpa_pembanding.join(", ")) + "." : ""}</li>
+      ${e.libur_dikeluarkan.length ? `<li>Hari libur/Ramadan dikeluarkan: ${esc(e.libur_dikeluarkan.join(", "))}.</li>` : ""}
+      <li>Sampel pembanding A per hari: ${esc(Object.entries(e.sampel_a).map(([h, n]) => `${h} ${n}`).join(", ") || "-")}.</li>
+    </ul>` : "";
+  const rata = e.rata_bill ? `<li>Rata-rata bill F&amp;B selama promo ${esc(e.rata_bill.selama)} vs sebelum ${esc(e.rata_bill.sebelum)}
+      (<span class="${esc(e.rata_bill.selisih.arah)}">${esc(e.rata_bill.selisih.persen)}</span>).</li>` : "";
+  const setelah = e.setelah ? `<li>Efek setelah promo: ${esc(e.setelah.teks)}${e.setelah_menu ? "; " + esc(e.setelah_menu.teks) : ""}.</li>` : "";
+  return `<div class="kartu cek ${WARNA_LABEL[k.label] || ""}">
+    <div class="cek-judul"><span class="lencana ${esc(WARNA_LABEL[k.label] || "tidak_bisa")}">${esc(k.label)}</span>
+      <span>${esc(e.nama)}</span><span class="cek-file">${esc(e.periode)} · ${esc(e.data_promo)}</span></div>
+    <ul class="catatan">${k.alasan.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+    <h3 class="sub-judul">Bill yang memakai promo (nama di ESB: ${esc(e.promotion_esb.join(", ") || "belum diisi")})</h3>${bp}
+    ${banding}
+    <ul class="catatan">${rata}${setelah}
+      <li>Pembanding A: ${esc(e.pembanding_a)}. Pembanding B: ${esc(e.pembanding_b)}.</li>
+      <li>Menu promo: ${esc(e.menu_promo.join(", ") || "belum diisi di Pengaturan")}.</li></ul>
+  </div>`;
+}
+
+function tabPromo(d) {
+  const p = d.promo;
+  let h = "";
+  h += `<h2>Promo terdaftar</h2>`;
+  if (!p.jumlah_terdaftar) {
+    h += `<div class="kartu kosong">Belum ada promo yang didaftarkan. Isi daftar promo (nama, periode, cabang, nama di ESB, menu promo) di
+      <a href="#pengaturan">Pengaturan</a> supaya bisa dinilai Menambah omzet / Netral / Mengurangi omzet.</div>`;
+  } else if (!p.terdaftar.length) {
+    h += `<div class="kartu kosong">Tidak ada promo terdaftar yang berjalan di periode ini (atau selesai ≤ 4 minggu sebelumnya) untuk cabang ini.</div>`;
+  } else {
+    h += p.terdaftar.map(kartuPromo).join("");
+  }
+  h += `<h2>Promo tercatat di ESB periode ini</h2>`;
+  if (!p.esb.tersedia) h += `<div class="kartu kosong">Tidak diketahui — ${esc(p.esb.alasan)}.</div>`;
+  else {
+    h += `<div class="kartu">${p.esb.baris.length ? tabel(p.esb.baris) : "<p class='catatan'>Tidak ada bill yang memakai promo.</p>"}
+      <p class="catatan">Bill tanpa promo: ${p.esb.tanpa_promo.bill}, rata-rata bill F&amp;B ${esc(p.esb.tanpa_promo.rata_bill_fnb)}.</p>
+      <ul class="catatan">${p.esb.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
+  }
+  h += `<h2>Paket</h2>`;
+  const pk = p.paket;
+  if (!pk.tersedia) h += `<div class="kartu kosong">Tidak diketahui — ${esc(pk.alasan)}.</div>`;
+  else if (!pk.baris.length) h += `<div class="kartu kosong">${esc(pk.catatan[0])}</div>`;
+  else {
+    h += `<div class="kartu">${tabel(pk.baris)}
+      <p class="catatan">Bill paket saja (tanpa item berbayar lain): ${pk.paket_saja} dari ${pk.bill_paket} bill paket, ${esc(pk.paket_saja_per_hari)} per hari buka.</p>
+      <h3 class="sub-judul">Isi paket yang paling sering</h3>${tabel(pk.isi)}
+      <h3 class="sub-judul">Sebaran bill paket per hari</h3>${tabel(pk.per_hari)}
+      <h3 class="sub-judul">Sebaran per jendela waktu</h3>${tabel(pk.per_jendela)}
+      <ul class="catatan">${pk.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
+  }
+  h += `<ul class="catatan"><li>Kesimpulan memakai sisi pesimis dari dua pembanding; ambang netral ±${esc(p.ambang)}% (Pengaturan).</li>
+    <li>Pembanding tidak memakai hari libur, Ramadan, hari tutup, hari parsial, atau hari tanpa data.</li></ul>`;
+  return { html: h, setelah: () => {} };
+}
+
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
   const q = d.kualitas;
@@ -385,6 +451,7 @@ function render() {
   if (keadaan.tab === "overview") hasil = tabOverview(d);
   else if (keadaan.tab === "foot") hasil = tabFoot(d);
   else if (["makanan", "kudapan", "minuman"].includes(keadaan.tab)) hasil = tabMenu(d, keadaan.tab);
+  else if (keadaan.tab === "promo") hasil = tabPromo(d);
   else {
     const m = d.menyusul.find((x) => x.kode === keadaan.tab);
     hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };

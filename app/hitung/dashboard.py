@@ -8,7 +8,7 @@ from decimal import Decimal
 from app import pengaturan
 from app import pengaturan_bawaan as P
 from app.angka import format_angka, format_rupiah
-from app.hitung import foot_traffic, menu, overview
+from app.hitung import foot_traffic, menu, overview, promo
 from app.hitung.data import DataRentang, muat
 from app.hitung.minggu import (BULAN_PANJANG, Rentang, bulan_penuh, bulan_sebelumnya, label_tanggal,
                                minggu_bulan, minggu_sebelumnya, ringkas_tanggal)
@@ -16,7 +16,7 @@ from app.hitung.nilai import bagi, jumlah
 from app.hitung.overview import tgl
 
 TAB_MENYUSUL = {
-    "promo": ("Performa Promo", 6), "membership": ("Progress Membership Keluarga Ampyang", 7),
+    "membership": ("Progress Membership Keluarga Ampyang", 7),
     "sosmed": ("Performa Sosial Media & Campaign/Konten", 8),
 }
 
@@ -104,8 +104,8 @@ def _kualitas(con, d: DataRentang, libur_ok: bool) -> dict:
         {"file": "Bill Report (wajib)", "status": "ada" if cakup("bill") else "tidak ada", "keterangan": f"{cakup('bill')}/{len(d.hari)} hari"},
         {"file": "Sales Menu COGS Report (wajib)", "status": "ada" if cakup("cogs") else "tidak ada", "keterangan": f"{cakup('cogs')}/{len(d.hari)} hari"},
     ] + [{"file": f, "status": "tidak ada", "keterangan": f"diolah mulai tahap {t}"} for f, t in (
-        ("Promotion Report", 6), ("Customer Data Report", 7), ("Staff Sales & Cancel Report", 6),
-        ("Cancel Menu Detail Report", 6), ("Data loyalty Keluarga Ampyang", 7), ("Instagram Insights (opsional)", 8))]
+        ("Promotion Report", 10), ("Customer Data Report", 7), ("Staff Sales & Cancel Report", 10),
+        ("Cancel Menu Detail Report", 10), ("Data loyalty Keluarga Ampyang", 7), ("Instagram Insights (opsional)", 8))]
     rekon = []
     for uid in sorted({p[0] for p in per}):
         p = next(x for x in per if x[0] == uid)
@@ -193,6 +193,7 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
         },
         "foot_traffic": {**foot_traffic.hitung(d), "banding": foot_traffic.banding(d, dp, label_prev)},
         **{t: menu.hitung(con, t, d, dp, label_prev) for t in ("makanan", "kudapan", "minuman")},
+        "promo": promo.hitung(con, d),
         "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi"))),
         "menyusul": [{"kode": k, "nama": n, "tahap": t} for k, (n, t) in TAB_MENYUSUL.items()],
         "jendela_waktu": P.JENDELA_WAKTU,

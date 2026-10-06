@@ -8,11 +8,11 @@ Prinsip utama: **angka yang salah lebih buruk daripada angka yang kosong.**
 Data yang tidak ada atau tidak cocok ditampilkan sebagai "Tidak diketahui"
 beserta alasannya.
 
-> Status: tahap 5 dari 10. Sudah bisa: upload Bill Report + COGS Report,
+> Status: tahap 6 dari 10. Sudah bisa: upload Bill Report + COGS Report,
 > laporan validasi, simpan, riwayat data, dashboard tab Overview Omzet,
-> Makanan, Kudapan, Minuman, dan Foot Traffic (mingguan M1–M5 + Bulan Penuh)
-> dengan tombol "Dari mana angka ini?", panel kualitas data, dan Pengaturan
-> dasar. Tab Promo, Membership, dan Sosmed menyusul.
+> Makanan, Kudapan, Minuman, Foot Traffic, dan Promo (mingguan M1–M5 +
+> Bulan Penuh) dengan tombol "Dari mana angka ini?", panel kualitas data,
+> dan Pengaturan. Tab Membership dan Sosmed menyusul.
 
 ## Memasang (Windows)
 

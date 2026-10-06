@@ -81,3 +81,13 @@ def test_dashboard_api(tmp_path, klien):
     assert d["overview"]["kartu"]["grand_total"]["teks"] == "Rp88.000"
     assert klien.get("/api/dashboard", params={"cabang": "Darmo", "bulan": "2026-09"}).status_code == 400
     assert klien.get("/api/dashboard", params={"cabang": "Rungkut", "bulan": "2026-13"}).status_code == 400
+
+
+def test_pengaturan_promo(klien):
+    ok = {"nama": "Serbuk Hemat", "mulai": "2026-09-15", "selesai": "2026-10-15", "cabang": "keduanya",
+          "promotion_esb": ["PROMO  MEMBERSHIP SERBUK HEMAT "], "menu_promo": []}
+    assert klien.put("/api/pengaturan/promo", json={"nilai": [ok]}).status_code == 200
+    assert klien.get("/api/pengaturan").json()["promo"][0]["promotion_esb"] == ["PROMO MEMBERSHIP SERBUK HEMAT"]
+    assert klien.put("/api/pengaturan/promo", json={"nilai": [{**ok, "selesai": "2026-09-01"}]}).status_code == 400
+    assert klien.put("/api/pengaturan/promo", json={"nilai": [{**ok, "cabang": "Darmo"}]}).status_code == 400
+    assert klien.put("/api/pengaturan/ambang_netral_persen", json={"nilai": 80}).status_code == 400

@@ -16,6 +16,10 @@ async function muatPengaturan() {
   document.getElementById("isi-target").value = Object.entries(s.target_omzet)
     .map(([k, v]) => `${k.replace("|", " ")} ${v}`).join("\n");
   document.getElementById("isi-menu-baru").value = s.menu_baru.map((x) => `${x.nama} | ${x.mulai} | ${x.tab}`).join("\n");
+  document.getElementById("isi-promo").value = s.promo.map((p) =>
+    [p.nama, p.mulai, p.selesai, p.cabang, p.promotion_esb.join("; "), p.menu_promo.join("; ")].join(" | ")).join("\n");
+  document.getElementById("isi-internal").value = s.promotion_internal.join("; ");
+  document.getElementById("isi-ambang").value = s.ambang_netral_persen;
   document.getElementById("isi-suhu").value = Object.entries(s.suhu_per_menu).map(([m, v]) => `${m} = ${v}`).join("\n");
   document.getElementById("isi-kategori").innerHTML = Object.entries(s.kategori).map(([k, v]) =>
     `<label>${esc(LABEL_KATEGORI[k] || k)}<input data-kat="${esc(k)}" value="${esc(v.join(", "))}"></label>`).join("");
@@ -58,6 +62,21 @@ const PENYIMPAN = {
       k[el.dataset.kat] = el.value.split(",").map((x) => x.trim()).filter(Boolean);
     });
     await kirim("kategori", k);
+  },
+  async promo() {
+    const daftar = baris("isi-promo").map((x) => {
+      const b = x.split("|").map((y) => y.trim());
+      while (b.length < 6) b.push("");
+      if (b.length > 6 || !b[0] || !/^\d{4}-\d{2}-\d{2}$/.test(b[1]) || !/^\d{4}-\d{2}-\d{2}$/.test(b[2])
+          || !["Rungkut", "Mawar", "keduanya"].includes(b[3])) {
+        throw new Error(`Baris promo tidak sesuai format: "${x}"`);
+      }
+      const pisah = (v) => v.split(";").map((y) => y.trim()).filter(Boolean);
+      return { nama: b[0], mulai: b[1], selesai: b[2], cabang: b[3], promotion_esb: pisah(b[4]), menu_promo: pisah(b[5]) };
+    });
+    await kirim("promo", daftar);
+    await kirim("promotion_internal", document.getElementById("isi-internal").value.split(";").map((y) => y.trim()).filter(Boolean));
+    await kirim("ambang_netral_persen", Number(document.getElementById("isi-ambang").value));
   },
   async menuBaru() {
     const m = baris("isi-menu-baru").map((x) => {
