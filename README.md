@@ -20,7 +20,7 @@ beserta alasannya.
 ## Mengecek file ESB (sementara, lewat terminal)
 
 ```
-.venv\Scripts\python -m app.cek_file --cabang Rungkut --awal 2026-09-01 --akhir 2026-09-07 bill.xlsx cogs.xlsx
+.venv\Scripts\python -m app.cek_file --awal 2026-09-28 --akhir 2026-10-04 bill.xlsx cogs.xlsx
 ```
 
 ## Tes

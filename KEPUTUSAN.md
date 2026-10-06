@@ -29,3 +29,22 @@ harus bisa berjalan tanpa data Instagram.
 | Input manual mingguan | Form total mingguan per akun (tayangan, jangkauan, interaksi, kunjungan profil, klik tautan, pengikut baru), disalin dari aplikasi/Meta Business Suite. Setiap angka berlabel "input manual". Analisa yang butuh data harian (deteksi tanggal iklan, korelasi klik vs bill harian, grafik harian) tidak dihitung: "butuh data harian". |
 | CSV harian menyusul | Saat akses pulih, file panjang bisa diunggah untuk mengisi celah. Digabung tanpa dobel (satu nilai per tanggal). Bila ada input manual untuk minggu yang sama, data harian dipakai dan selisihnya terhadap input manual ditampilkan. |
 | Export Meta Ads Manager | Tetap opsional dan terpisah dari akses akun IG. |
+
+## Temuan dari export ESB asli (28 Sep – 4 Okt 2026)
+
+- Satu export berisi **dua cabang** sekaligus (metadata `Branch` berisi
+  daftar, kolom `Branch` per baris). Parser memecah per cabang; unggahan
+  tidak lagi wajib satu cabang.
+- Metadata `Sales Type: Sales, Non Sales`. Baris Non Sales ikut footer,
+  dikeluarkan dari analisa.
+- Bill Report: footer satu baris tanpa label, angka teks format Indonesia
+  di bawah kolomnya. `VAT Total` dan `DPP` tidak ditotal di footer.
+  Ada `Service Charge Total` (Rungkut ±3%, Mawar 0) dan `Rounding Total`:
+  rekonsiliasi omzet = Subtotal − diskon + service charge + pajak + pembulatan.
+- **Sales Menu COGS Report tidak punya footer.** Kebenarannya dicek lewat
+  Σ Total COGS = Σ Subtotal Bill per cabang per tanggal (terbukti: 6 hari,
+  861 bill, selisih Rp0).
+- Nilai uang berpecahan sampai 4 desimal; dibaca sampai 6 desimal, dibulatkan
+  hanya di tampilan.
+- Teks kategori diakhiri spasi (`'TEH '`, `'ADD ON '`); dibersihkan.
+- Kolom `Customer Name` dan `Additional Info` berisi nama pelanggan; tidak dibaca.

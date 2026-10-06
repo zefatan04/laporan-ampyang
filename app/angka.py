@@ -11,6 +11,10 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 SEN = Decimal("0.01")
+# ESB menyimpan nilai uang dengan pecahan hingga 4 desimal (mis. 4183.296,
+# 2583.3333). Dibaca sampai 6 desimal supaya penjumlahan tidak bergeser dari
+# footer; pembulatan ke rupiah hanya di tampilan.
+PRESISI = Decimal("0.000001")
 
 # "231.973.850,00", "-1.500", "(2.000,50)", "12,5"
 _POLA_ID = re.compile(r"^[+-]?\d{1,3}(\.\d{3})*(,\d+)?$|^[+-]?\d+(,\d+)?$")
@@ -35,9 +39,9 @@ def baca_angka(nilai) -> Decimal | None:
     if isinstance(nilai, int):
         return Decimal(nilai)
     if isinstance(nilai, float):
-        # repr float terpendek lalu dibulatkan ke sen, supaya 0.1+0.2 tidak
-        # membawa ekor 0.30000000000000004 ke dalam jumlah.
-        return Decimal(repr(nilai)).quantize(SEN, rounding=ROUND_HALF_UP)
+        # repr float terpendek lalu dibulatkan ke PRESISI, supaya 0.1+0.2
+        # tidak membawa ekor 0.30000000000000004 ke dalam jumlah.
+        return Decimal(repr(nilai)).quantize(PRESISI, rounding=ROUND_HALF_UP)
     if isinstance(nilai, Decimal):
         return nilai
     teks = str(nilai).strip().replace("Rp", "").replace(" ", "").replace(" ", "")

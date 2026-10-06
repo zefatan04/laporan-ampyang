@@ -66,6 +66,9 @@ class JenisLaporan:
     kolom_id: str | None = None    # kolom yang selalu terisi di baris data
     # Kolom yang dijumlahkan di footer dan wajib cocok dengan Σ baris data.
     kolom_footer: tuple[str, ...] = ()
+    # Terbukti dari export asli: Sales Menu COGS Report TIDAK punya baris
+    # footer, jadi rekonsiliasinya lewat cek silang dengan Bill Report.
+    punya_footer: bool = True
 
 
 BILL = JenisLaporan(
@@ -78,7 +81,10 @@ BILL = JenisLaporan(
     kolom=(
         Kolom("Sales Number", "sales_number", TEKS),
         Kolom("Bill Number", "bill_number", TEKS),
+        Kolom("Sales Type", "sales_type", TEKS),
+        Kolom("Branch", "branch", TEKS),
         Kolom("Sales Date", "sales_date", TANGGAL),
+        Kolom("Sales In Date", "sales_in_date", TANGGAL, wajib=False),
         Kolom("Sales In Time", "sales_in_time", JAM),
         Kolom("Sales Out Time", "sales_out_time", JAM, wajib=False),
         Kolom("Visit Purpose", "visit_purpose", TEKS),
@@ -88,14 +94,26 @@ BILL = JenisLaporan(
         Kolom("Menu Discount", "menu_discount", UANG),
         Kolom("Bill Discount", "bill_discount", UANG),
         Kolom("Voucher Discount", "voucher_discount", UANG),
+        Kolom("Net Sales", "net_sales", UANG, wajib=False),
+        Kolom("Service Charge Total", "service_charge_total", UANG),
         Kolom("Tax Total", "tax_total", UANG),
+        Kolom("VAT Total", "vat_total", UANG, wajib=False),
+        Kolom("Delivery Cost", "delivery_cost", UANG, wajib=False),
+        Kolom("Order Fee", "order_fee", UANG, wajib=False),
+        Kolom("Platform Fee", "platform_fee", UANG, wajib=False),
+        Kolom("Voucher Sales Total", "voucher_sales_total", UANG, wajib=False),
+        Kolom("Rounding Total", "rounding_total", UANG, wajib=False),
         Kolom("Grand Total", "grand_total", UANG),
         Kolom("Promotion", "promotion", TEKS, wajib=False),
         Kolom("Cashier", "cashier", TEKS, wajib=False),
-        Kolom("Sales Type", "sales_type", TEKS, wajib=False),
+        # Customer Name, Additional Info, dll. sengaja TIDAK dibaca: berisi
+        # nama pelanggan dan tidak dibutuhkan laporan.
     ),
     kolom_footer=("Pax Total", "Subtotal", "Menu Discount", "Bill Discount",
-                  "Voucher Discount", "Tax Total", "Grand Total"),
+                  "Voucher Discount", "Net Sales", "Service Charge Total", "Tax Total",
+                  # VAT Total dan DPP terbukti tidak ditotal di footer ESB.
+                  "Delivery Cost", "Order Fee", "Platform Fee",
+                  "Voucher Sales Total", "Rounding Total", "Grand Total"),
 )
 
 COGS = JenisLaporan(
@@ -108,7 +126,10 @@ COGS = JenisLaporan(
     kolom=(
         Kolom("Sales Number", "sales_number", TEKS),
         Kolom("Sales Date", "sales_date", TANGGAL),
+        Kolom("Sales Type", "sales_type", TEKS),
+        Kolom("Branch", "branch", TEKS),
         Kolom("Menu", "menu", TEKS),
+        Kolom("Menu Code", "menu_code", TEKS, wajib=False),
         Kolom("Menu Category", "menu_category", TEKS),
         Kolom("Menu Category Detail", "menu_category_detail", TEKS),
         Kolom("Qty", "qty", ANGKA),
@@ -118,9 +139,8 @@ COGS = JenisLaporan(
         Kolom("COGS Total", "cogs_total", UANG),
         Kolom("COGS Total (%)", "cogs_total_pct", PERSEN, wajib=False),
         Kolom("Margin", "margin", UANG, wajib=False),
-        Kolom("Sales Type", "sales_type", TEKS, wajib=False),
     ),
-    kolom_footer=("Qty", "Total", "Discount Total", "COGS Total"),
+    punya_footer=False,
 )
 
 # Laporan opsional: untuk sekarang hanya dikenali jenisnya. Parser
@@ -358,7 +378,10 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
         punya_angka = any(j < len(b) and not _kosong(b[j]) for j in i_footer_kol.values())
         (calon.append((n, b)) if punya_angka else
          hasil.peringatan.append(Catatan(n, f"Baris setelah data diabaikan: {_ringkas(b)}")))
-    if not calon:
+    if not jenis.punya_footer:
+        for n, b in calon:
+            hasil.galat.append(Catatan(n, f"Ada baris setelah data padahal laporan ini tidak punya footer: {_ringkas(b)}"))
+    elif not calon:
         hasil.galat.append(Catatan(None, "Baris footer (total) tidak ditemukan. Rekonsiliasi tidak bisa dilakukan."))
     else:
         if len(calon) > 1:
@@ -395,8 +418,32 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
             df[k.kode] = None
     if "menu" in df.columns:
         df["menu_bersih"] = df["menu"].map(bersihkan_nama_menu)
+    for k in ("menu_category", "menu_category_detail", "visit_purpose", "sales_type"):
+        if k in df.columns:  # ESB menyisakan spasi di ujung, mis. 'TEH ', 'ADD ON '
+            df[k] = df[k].map(lambda v: bersihkan_nama_menu(v) if v is not None else None)
+
+    # Satu export bisa memuat beberapa cabang (kolom Branch per baris).
+    df["cabang"] = df["branch"].map(nama_cabang)
+    for nilai in sorted({b for b, c in zip(df["branch"], df["cabang"]) if c is None}, key=str):
+        n = df.loc[df["branch"] == nilai, "baris_excel"] if nilai is not None else df.loc[df["branch"].isna(), "baris_excel"]
+        hasil.galat.append(Catatan(int(n.iloc[0]), f"Cabang '{nilai}' tidak dikenal ({len(n)} baris)."))
     hasil.data = df
     return hasil
+
+
+def nama_cabang(teks) -> str | None:
+    """'Kedai Ampyang - Rungkut' -> 'Rungkut'. Tidak cocok persis satu cabang -> None."""
+    from app.pengaturan_bawaan import CABANG
+    cocok = [c for c in CABANG if c.lower() in str(teks or "").lower()]
+    return cocok[0] if len(cocok) == 1 else None
+
+
+def daftar_cabang_metadata(teks: str | None) -> list[str] | None:
+    """Metadata 'Branch: Kedai Ampyang - Mawar, Kedai Ampyang - Rungkut' -> ['Mawar', 'Rungkut']."""
+    if not teks:
+        return None
+    hasil = [nama_cabang(b) for b in teks.split(",")]
+    return None if any(h is None for h in hasil) else sorted(hasil)
 
 
 def _ringkas(baris: list, n: int = 6) -> str:
