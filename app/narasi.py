@@ -39,6 +39,7 @@ TAB = {
     "sosmed": ("sosmed", "Performa Sosial Media & Campaign/Konten"),
 }
 MAKS_BARIS = 40
+JENIS = ("fakta", "dugaan", "belum_bisa_disimpulkan", "saran")
 
 SKEMA = """CREATE TABLE IF NOT EXISTS narasi (cabang VARCHAR NOT NULL, awal DATE NOT NULL, akhir DATE NOT NULL,
     tab VARCHAR NOT NULL, versi VARCHAR NOT NULL, temuan JSON NOT NULL, dibuang JSON NOT NULL, model VARCHAR NOT NULL,
@@ -181,8 +182,9 @@ def verifikasi(temuan: list[dict], m: dict) -> tuple[list[dict], list[dict]]:
                 simpan.append(k)
         if simpan:
             teks = " ".join(simpan)
-            if t["jenis"] == "dugaan" and not teks.lower().startswith("dugaan"):
-                teks = "Dugaan: " + teks[0].lower() + teks[1:]  # dugaan selalu berlabel, juga saat teks disalin
+            awal = {"dugaan": "Dugaan", "saran": "Saran"}.get(t["jenis"])
+            if awal and not teks.lower().startswith(awal.lower()):
+                teks = f"{awal}: " + teks[0].lower() + teks[1:]  # dugaan & saran selalu berlabel, juga saat teks disalin
             bersih.append({"teks": teks, "jenis": t["jenis"]})
     return bersih, dibuang
 
@@ -191,26 +193,30 @@ def verifikasi(temuan: list[dict], m: dict) -> tuple[list[dict], list[dict]]:
 # Panggilan model
 # ---------------------------------------------------------------------------
 
-SISTEM = """Kamu menulis temuan untuk laporan mingguan/bulanan tim marketing Kedai Ampyang, kopitiam di Surabaya.
-Pembacanya pemilik dan tim marketing. Kamu menerima JSON berisi angka yang sudah dihitung oleh program untuk satu tab dashboard.
-
-Tulis 3 sampai 6 temuan dalam bahasa Indonesia yang wajar dan langsung, seperti ditulis orang yang paham kedai ini.
-
-Aturan keras:
+ATURAN = """Aturan keras:
 1. Hanya boleh menyebut angka yang ada di JSON, ditulis persis seperti di JSON (format Indonesia, mis. Rp1.234.567, 12,5%). Jangan menghitung angka baru: jangan menjumlah, mengurangi, membagi, membulatkan ke "juta", atau menghitung persen sendiri. Setiap angka di teks diperiksa otomatis ke JSON, dan kalimat dengan angka yang tidak ada di JSON akan dibuang.
 2. Angka bertanda "Tidak diketahui", status "tidak_diketahui", atau berlabel "batas bawah"/"batas atas"/"estimasi" harus disebut dengan labelnya, atau tidak disebut sama sekali.
-3. Kalau data untuk sebuah kesimpulan tidak cukup, tulis "belum bisa disimpulkan" dan sebut data apa yang kurang. Pakai jenis "belum_bisa_disimpulkan".
-4. Bedakan fakta dan dugaan. Fakta = langsung terbaca dari angka (jenis "fakta"). Penjelasan kemungkinan sebab = dugaan (jenis "dugaan"), dan kalimatnya diawali "Dugaan:".
+3. Kalau data untuk sebuah kesimpulan tidak cukup, tulis "belum bisa disimpulkan" dan sebut data apa yang kurang.
+4. Bedakan fakta dan dugaan. Fakta = langsung terbaca dari angka. Penjelasan kemungkinan sebab = dugaan, dan kalimatnya diawali "Dugaan:".
 5. Jangan menyebut sebab-akibat hanya dari dua hal yang terjadi pada waktu yang sama atau dari korelasi.
 6. Kalau data Instagram tidak diunggah, katakan begitu dan jangan menyimpulkan apa pun soal media sosial.
 7. Kalau JSON menandai sebagian data disimpan walau rekonsiliasi gagal, temuan pertama harus menyebut bahwa angka periode ini bisa salah.
+8. Saran (bila ada) adalah tindakan untuk tim marketing, dengan argumen yang bersandar pada angka di JSON. Saran tidak boleh memuat angka baru seperti target atau persentase kenaikan yang tidak ada di JSON.
 
 Gaya:
+- Bahasa Indonesia yang wajar dan langsung, seperti ditulis orang yang paham kedai ini.
 - Tanpa kalimat pembuka atau penutup basa-basi. Langsung ke isi.
 - Satu temuan = satu atau dua kalimat pendek. Pakai titik, jangan titik koma.
 - Hindari pola "bukan X, melainkan Y", "bukan hanya X, tetapi juga Y", kata "signifikan", "menariknya", "perlu dicatat", "secara keseluruhan".
 - Sebut nama menu, hari, dan tanggal seperti di JSON.
 - Urutkan dari temuan yang paling penting untuk keputusan marketing."""
+
+SISTEM = """Kamu menulis temuan untuk laporan mingguan/bulanan tim marketing Kedai Ampyang, kopitiam di Surabaya.
+Pembacanya pemilik dan tim marketing. Kamu menerima JSON berisi angka yang sudah dihitung oleh program untuk satu tab dashboard.
+
+Tulis 3 sampai 6 temuan, ditambah paling banyak 2 saran. Jenis: "fakta", "dugaan", "belum_bisa_disimpulkan", atau "saran".
+
+""" + ATURAN
 
 SKEMA_KELUARAN = {
     "type": "object",
@@ -221,7 +227,7 @@ SKEMA_KELUARAN = {
                 "type": "object",
                 "properties": {
                     "teks": {"type": "string"},
-                    "jenis": {"type": "string", "enum": ["fakta", "dugaan", "belum_bisa_disimpulkan"]},
+                    "jenis": {"type": "string", "enum": list(JENIS)},
                 },
                 "required": ["teks", "jenis"],
                 "additionalProperties": False,
@@ -295,13 +301,109 @@ def buat(con, data: dict, tab: str, klien=None) -> dict:
         raise NarasiGagal("Narasi otomatis tidak aktif: ANTHROPIC_API_KEY belum diisi di file .env.")
     m = muatan(data, tab)
     mentah, model = minta_model(m, klien)
+    _simpan(con, data, tab, m, mentah, model)
+    return status(con, data)[tab]
+
+
+def _simpan(con, data: dict, tab: str, m: dict, mentah: list[dict], model: str) -> tuple[list[dict], list[dict]]:
     temuan, dibuang = verifikasi(mentah, m)
     pastikan(con)
     p = data["periode"]
     con.execute("INSERT OR REPLACE INTO narasi VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [data["cabang"], p["awal"], p["akhir"], tab, versi(m), json.dumps(temuan, ensure_ascii=False),
                  json.dumps(dibuang, ensure_ascii=False), model, datetime.now()])
-    return status(con, data)[tab]
+    return temuan, dibuang
+
+
+# ---------------------------------------------------------------------------
+# Jalur manual (tanpa API): paket untuk Claude -> tempel jawaban -> verifikasi
+# ---------------------------------------------------------------------------
+
+MODEL_MANUAL = "Claude (ditempel manual)"
+LABEL = {"FAKTA": "fakta", "DUGAAN": "dugaan", "BELUM BISA DISIMPULKAN": "belum_bisa_disimpulkan", "SARAN": "saran"}
+_BARIS_TAB = re.compile(r"^\W*===\s*([a-z_]+)\s*===\W*$", re.IGNORECASE)
+_BARIS_LABEL = re.compile(r"^\s*(?:[-*•]|\d+[.)])?\s*\**\s*(FAKTA|DUGAAN|BELUM BISA DISIMPULKAN|SARAN)\s*\**\s*:\s*\**\s*(.+)$",
+                          re.IGNORECASE)
+
+
+def paket(data: dict) -> str:
+    """Satu file Markdown: instruksi + format jawaban + data semua tab. Diunggah/ditempel user ke Claude."""
+    p = data["periode"]
+    judul = f"{data['cabang']} · {p['label']} ({p['awal']} s/d {p['akhir']})"
+    bagian = [
+        f"# Paket analisa Kedai Ampyang — {judul}",
+        "",
+        "Kamu menulis temuan untuk laporan tim marketing Kedai Ampyang, kopitiam di Surabaya (cabang Rungkut dan Mawar). "
+        "Pembacanya pemilik dan tim marketing. Di bawah ada data delapan tab dashboard dalam JSON. Semua angka sudah dihitung "
+        "oleh program dari export kasir (ESB), web loyalty, dan Instagram. Jangan menghitung ulang.",
+        "",
+        "Untuk SETIAP tab, tulis 3 sampai 6 temuan, lalu paling banyak 2 saran tindakan beserta argumennya.",
+        "",
+        ATURAN,
+        "",
+        "## Format jawaban (wajib, supaya bisa dicek otomatis)",
+        "",
+        "Tulis hanya blok berikut, satu blok per tab, dengan kode tab persis seperti di judul data. Setiap baris diawali salah "
+        "satu label: FAKTA, DUGAAN, BELUM BISA DISIMPULKAN, atau SARAN. Satu baris = satu temuan. Tanpa teks lain di luar blok.",
+        "",
+        "```",
+        "=== overview ===",
+        "FAKTA: ...",
+        "DUGAAN: ...",
+        "BELUM BISA DISIMPULKAN: ...",
+        "SARAN: ...",
+        "=== makanan ===",
+        "FAKTA: ...",
+        "```",
+        "",
+        "## Data",
+    ]
+    for tab, (_, nama) in TAB.items():
+        bagian += ["", f"### Tab `{tab}` — {nama}", "", "```json",
+                   json.dumps(muatan(data, tab), ensure_ascii=False, indent=1, default=str), "```"]
+    return "\n".join(bagian) + "\n"
+
+
+def baca_jawaban(teks: str) -> tuple[dict[str, list[dict]], list[str]]:
+    """Jawaban Claude (format === tab === + baris berlabel) -> ({tab: [temuan]}, catatan)."""
+    hasil: dict[str, list[dict]] = {}
+    catatan, tab = [], None
+    for baris in teks.splitlines():
+        if not baris.strip() or baris.strip().startswith("```"):
+            continue
+        m = _BARIS_TAB.match(baris.strip())
+        if m:
+            kode = m.group(1).lower()
+            tab = kode if kode in TAB else None
+            if tab is None:
+                catatan.append(f"Bagian '{m.group(1)}' bukan kode tab yang dikenal; dilewati.")
+            else:
+                hasil.setdefault(tab, [])
+            continue
+        if tab is None:
+            continue
+        m = _BARIS_LABEL.match(baris)
+        if m:
+            hasil[tab].append({"teks": m.group(2).strip().strip("*").strip(), "jenis": LABEL[m.group(1).upper()]})
+        elif hasil[tab]:  # sambungan baris sebelumnya
+            hasil[tab][-1]["teks"] += " " + baris.strip()
+        else:
+            catatan.append(f"Tab {tab}: baris tanpa label dilewati: \"{baris.strip()[:80]}\"")
+    if not hasil:
+        raise NarasiGagal("Tidak ada bagian '=== kode tab ===' di jawaban. Pastikan yang ditempel jawaban Claude untuk paket dari aplikasi ini.")
+    return hasil, catatan
+
+
+def simpan_manual(con, data: dict, teks: str) -> dict:
+    jawaban, catatan = baca_jawaban(teks)
+    ringkas = {}
+    for tab, temuan in jawaban.items():
+        if not temuan:
+            catatan.append(f"Tab {tab}: tidak ada baris berlabel; tab ini tidak diubah.")
+            continue
+        bersih, dibuang = _simpan(con, data, tab, muatan(data, tab), temuan, MODEL_MANUAL)
+        ringkas[tab] = {"temuan": len(bersih), "dibuang": len(dibuang)}
+    return {"tab": ringkas, "catatan": catatan}
 
 
 def status(con, data: dict) -> dict:

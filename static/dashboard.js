@@ -528,59 +528,106 @@ document.getElementById("dash-isi").addEventListener("click", (e) => {
 });
 
 // ---------------------------------------------------------------- narasi (Claude)
-// Dugaan sudah diawali "Dugaan:" di teksnya, jadi tidak diberi lencana lagi.
+// Mode ekspor: file HTML mandiri membawa datanya sendiri (window.DATA_EKSPOR), tanpa server.
+const EKSPOR = window.DATA_EKSPOR || null;
+// Dugaan & saran sudah diawali "Dugaan:"/"Saran:" di teksnya, jadi tidak diberi lencana lagi.
 const LABEL_JENIS = { belum_bisa_disimpulkan: ["peringatan", "belum bisa disimpulkan"] };
+const paramPeriode = (d) => ({ cabang: d.cabang, bulan: `${d.tahun}-${String(d.bulan).padStart(2, "0")}`, pilih: d.pilih });
 
 function panelNarasi(d, tab) {
   const n = d.narasi;
-  if (!n) return "";
-  if (!n.aktif) {
-    return `<div class="kartu kosong narasi">Narasi otomatis tidak aktif. Isi <code>ANTHROPIC_API_KEY</code> di file <code>.env</code>
-      di folder aplikasi, lalu jalankan ulang aplikasi. Semua angka di bawah tetap lengkap tanpa narasi.</div>`;
-  }
-  const x = n.tab[tab];
+  const x = n && n.tab[tab];
   if (!x) return "";
-  const tombol = `<button class="tombol" data-narasi="${esc(tab)}">${x.status === "belum" ? "Buat narasi" : "Buat ulang"}</button>`;
-  const kepala = (lencana) => `<div class="narasi-kepala"><h2 class="tanpa-jarak">Temuan</h2>${lencana}${tombol}</div>`;
+  if (EKSPOR && x.status === "belum") return "";
+  const tombol = EKSPOR ? "" : `<div class="aksi" style="margin:0">
+      <button class="tombol" data-paket>Unduh paket untuk Claude</button>
+      <button class="tombol" data-tempel>Tempel jawaban Claude</button>
+      ${n.aktif ? `<button class="tombol" data-narasi="${esc(tab)}">Buat lewat API</button>` : ""}</div>`;
+  const kepala = (lencana) => `<div class="narasi-kepala"><h2 class="tanpa-jarak">Temuan</h2>${lencana}</div>`;
   if (x.status === "belum") {
     return `<div class="kartu narasi">${kepala("")}
-      <p class="catatan">Belum ada narasi untuk tab ini. Narasi ditulis Claude dari angka di tab ini, lalu setiap angka di teksnya dicocokkan otomatis ke data.</p></div>`;
+      <ol class="catatan langkah">
+        <li><b>Unduh paket untuk Claude</b>: satu file berisi angka kedelapan tab periode ini dan instruksi analisa.</li>
+        <li>Buka Claude (claude.ai), unggah file itu (atau salin isinya), lalu kirim.</li>
+        <li>Salin seluruh jawaban Claude, tekan <b>Tempel jawaban Claude</b>. Setiap angka di jawabannya dicocokkan ke data;
+          kalimat dengan angka yang tidak ada di data dibuang.</li>
+      </ol>${tombol}</div>`;
   }
   const lencana = x.status === "ada"
     ? `<span class="lencana lulus">narasi terverifikasi</span>`
     : `<span class="lencana peringatan">data berubah sejak narasi dibuat — buat ulang</span>`;
   const daftar = x.temuan.length ? `<ul class="temuan">${x.temuan.map((t) => {
     const j = LABEL_JENIS[t.jenis];
-    return `<li>${j ? `<span class="lencana ${j[0]}">${esc(j[1])}</span> ` : ""}${esc(t.teks)}</li>`;
-  }).join("")}</ul>` : `<p class="catatan">Semua kalimat narasi dibuang karena memuat angka yang tidak ada di data. Coba buat ulang.</p>`;
+    return `<li class="${esc(t.jenis)}">${j ? `<span class="lencana ${j[0]}">${esc(j[1])}</span> ` : ""}${esc(t.teks)}</li>`;
+  }).join("")}</ul>` : `<p class="catatan">Semua kalimat narasi tab ini dibuang karena memuat angka yang tidak ada di data.</p>`;
   const buang = x.dibuang.length ? `<details><summary>${x.dibuang.length} kalimat dibuang karena angkanya tidak ditemukan di data</summary>
     ${tabel(x.dibuang.map((b) => ({ Kalimat: b.kalimat, "Angka tidak ditemukan": b.angka_tidak_ditemukan.join(", ") })))}</details>` : "";
   return `<div class="kartu narasi">${kepala(lencana)}${daftar}${buang}
     <p class="catatan">Dibuat ${esc(x.waktu.replace("T", " "))} · ${esc(x.model)}. Setiap angka di teks sudah dicocokkan ke data tab ini;
-      kalimat yang angkanya tidak ditemukan dibuang. Label "dugaan" = kemungkinan penjelasan, bukan fakta dari data.</p></div>`;
+      kalimat yang angkanya tidak ditemukan dibuang. "Dugaan" = kemungkinan penjelasan, bukan fakta dari data. "Saran" = usulan tindakan.</p>
+    ${tombol}</div>`;
 }
 
-document.getElementById("dash-isi").addEventListener("click", async (e) => {
-  const b = e.target.closest("[data-narasi]");
-  if (!b) return;
+function unduhPaket() {
+  location.href = `/api/paket-claude?${new URLSearchParams(paramPeriode(keadaan.data))}`;
+}
+
+function bukaTempel() {
+  const dlg = document.getElementById("dialog-tempel");
+  document.getElementById("tempel-isi").value = "";
+  document.getElementById("tempel-hasil").innerHTML = "";
+  dlg.showModal();
+}
+
+async function kirimTempel() {
   const d = keadaan.data;
-  const tab = b.dataset.narasi;
-  b.disabled = true;
-  b.textContent = "Menulis… (bisa sampai 1 menit)";
+  const tombol = document.getElementById("tempel-kirim");
+  const out = document.getElementById("tempel-hasil");
+  const teks = document.getElementById("tempel-isi").value;
+  if (!teks.trim()) { out.innerHTML = `<div class="pesan galat">Tempel jawaban Claude dulu.</div>`; return; }
+  tombol.disabled = true;
   try {
-    const hasil = await api("/api/narasi", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cabang: d.cabang, bulan: `${d.tahun}-${String(d.bulan).padStart(2, "0")}`, pilih: d.pilih, tab }),
+    const r = await api("/api/narasi/tempel", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...paramPeriode(d), teks }),
     });
-    if (hasil.galat) throw new Error(hasil.galat);
-    d.narasi.tab[tab] = hasil;
-    if (keadaan.data === d) render();
+    if (r.galat) throw new Error(r.galat);
+    const baris = Object.entries(r.tab).map(([t, v]) => ({ Tab: t, "Temuan disimpan": v.temuan, "Kalimat dibuang": v.dibuang }));
+    out.innerHTML = `<div class="pesan sukses">Tersimpan untuk ${baris.length} tab.</div>${tabel(baris)}
+      ${r.catatan.length ? `<ul class="catatan">${r.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}`;
+    if (keadaan.data === d) await muat();
   } catch (err) {
-    b.disabled = false;
-    b.textContent = "Coba lagi";
-    b.insertAdjacentHTML("afterend", `<span class="turun">${esc(err.message)}</span>`);
+    out.innerHTML = `<div class="pesan galat">${esc(err.message)}</div>`;
+  } finally {
+    tombol.disabled = false;
   }
-});
+}
+
+if (!EKSPOR) {
+  document.getElementById("dash-isi").addEventListener("click", async (e) => {
+    if (e.target.closest("[data-paket]")) { unduhPaket(); return; }
+    if (e.target.closest("[data-tempel]")) { bukaTempel(); return; }
+    const b = e.target.closest("[data-narasi]");
+    if (!b) return;
+    const d = keadaan.data;
+    const tab = b.dataset.narasi;
+    b.disabled = true;
+    b.textContent = "Menulis… (bisa sampai 1 menit)";
+    try {
+      const hasil = await api("/api/narasi", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...paramPeriode(d), tab }),
+      });
+      if (hasil.galat) throw new Error(hasil.galat);
+      d.narasi.tab[tab] = hasil;
+      if (keadaan.data === d) render();
+    } catch (err) {
+      b.disabled = false;
+      b.textContent = "Coba lagi";
+      b.insertAdjacentHTML("afterend", `<span class="turun">${esc(err.message)}</span>`);
+    }
+  });
+  document.getElementById("tempel-kirim").addEventListener("click", kirimTempel);
+  document.getElementById("tempel-tutup").addEventListener("click", () => document.getElementById("dialog-tempel").close());
+}
 
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
@@ -665,9 +712,9 @@ function render() {
   const d = keadaan.data;
   grafik.splice(0).forEach((g) => g.destroy());
   asalTerdaftar.length = 0;
-  history.replaceState(null, "", urlDashboard());
+  if (!EKSPOR) history.replaceState(null, "", urlDashboard());
 
-  document.getElementById("dash-minggu").innerHTML = d.tombol.map((t) =>
+  document.getElementById("dash-minggu").innerHTML = EKSPOR ? "" : d.tombol.map((t) =>
     `<button role="tab" data-pilih="${esc(t.kode)}" aria-selected="${t.kode === d.pilih}" class="${t.ada_data ? "" : "kosong"}">
       ${esc(t.label)}<small>${esc(t.status)}</small></button>`).join("");
   document.getElementById("dash-judul").textContent = `${d.cabang} · ${d.periode.label}`;
@@ -685,11 +732,7 @@ function render() {
   else if (["makanan", "kudapan", "minuman"].includes(keadaan.tab)) hasil = tabMenu(d, keadaan.tab);
   else if (keadaan.tab === "promo") hasil = tabPromo(d);
   else if (keadaan.tab === "membership") hasil = tabMembership(d);
-  else if (keadaan.tab === "sosmed") hasil = tabSosmed(d);
-  else {
-    const m = d.menyusul.find((x) => x.kode === keadaan.tab);
-    hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };
-  }
+  else hasil = tabSosmed(d);
   document.getElementById("dash-isi").innerHTML = panelNarasi(d, keadaan.tab) + hasil.html;
   document.getElementById("dash-kualitas").innerHTML = panelKualitas(d);
   hasil.setelah();
@@ -697,7 +740,7 @@ function render() {
 
 document.getElementById("dash-minggu").addEventListener("click", (e) => {
   const b = e.target.closest("[data-pilih]");
-  if (b) { keadaan.pilih = b.dataset.pilih; muat(); }
+  if (b && !EKSPOR) { keadaan.pilih = b.dataset.pilih; muat(); }
 });
 document.getElementById("dash-tab").addEventListener("click", (e) => {
   const b = e.target.closest("[data-tab]");
@@ -707,8 +750,16 @@ document.getElementById("dash-isi").addEventListener("click", (e) => {
   const b = e.target.closest("[data-asal]");
   if (b) bukaAsal(Number(b.dataset.asal));
 });
-document.getElementById("dash-cabang").addEventListener("change", (e) => { keadaan.cabang = e.target.value; muat(); });
-document.getElementById("dash-bulan").addEventListener("change", (e) => { keadaan.bulan = e.target.value; keadaan.pilih = "bulan"; muat(); });
-
-window.bukaDashboard = bukaDashboard;
-if (location.hash.startsWith("#dashboard")) bukaDashboard(location.hash.split("?")[1]);
+if (EKSPOR) {
+  keadaan.data = EKSPOR;
+  keadaan.pilih = EKSPOR.pilih;
+  render();
+} else {
+  document.getElementById("dash-cabang").addEventListener("change", (e) => { keadaan.cabang = e.target.value; muat(); });
+  document.getElementById("dash-bulan").addEventListener("change", (e) => { keadaan.bulan = e.target.value; keadaan.pilih = "bulan"; muat(); });
+  document.getElementById("dash-unduh").addEventListener("click", () => {
+    location.href = `/api/ekspor?${new URLSearchParams(paramPeriode(keadaan.data))}`;
+  });
+  window.bukaDashboard = bukaDashboard;
+  if (location.hash.startsWith("#dashboard")) bukaDashboard(location.hash.split("?")[1]);
+}

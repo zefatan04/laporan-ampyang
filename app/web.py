@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -241,8 +241,7 @@ def daftar_bulan():
         return {"bulan": dashboard.bulan_tersedia(con)}
 
 
-@app.get("/api/dashboard")
-def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
+def _periode(cabang: str, bulan: str) -> tuple[int, int]:
     if cabang not in ("Rungkut", "Mawar"):
         raise HTTPException(400, "Cabang tidak dikenal.")
     try:
@@ -250,10 +249,41 @@ def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
         date(tahun, b, 1)
     except ValueError as e:
         raise HTTPException(400, "Format bulan harus YYYY-MM.") from e
+    return tahun, b
+
+
+def _dashboard(con, cabang: str, bulan: str, pilih: str) -> dict:
+    tahun, b = _periode(cabang, bulan)
+    hasil = dashboard.hitung(con, cabang, tahun, b, pilih)
+    hasil["narasi"] = {"aktif": narasi.aktif(), "tab": narasi.status(con, hasil)}
+    return hasil
+
+
+@app.get("/api/dashboard")
+def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
     with db.koneksi() as con:
-        hasil = dashboard.hitung(con, cabang, tahun, b, pilih)
-        hasil["narasi"] = {"aktif": narasi.aktif(), "tab": narasi.status(con, hasil)}
-        return hasil
+        return _dashboard(con, cabang, bulan, pilih)
+
+
+@app.get("/api/ekspor")
+def unduh_html(cabang: str, bulan: str, pilih: str = "bulan"):
+    """Satu file HTML mandiri berisi semua tab periode ini (lihat app/ekspor.py)."""
+    from app import ekspor
+    with db.koneksi() as con:
+        data = _dashboard(con, cabang, bulan, pilih)
+    return Response(ekspor.html(data), media_type="text/html; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{ekspor.nama_file(data)}"'})
+
+
+@app.get("/api/paket-claude")
+def unduh_paket_claude(cabang: str, bulan: str, pilih: str = "bulan"):
+    """File Markdown berisi instruksi + angka semua tab, untuk diunggah user sendiri ke Claude (tanpa API)."""
+    with db.koneksi() as con:
+        data = _dashboard(con, cabang, bulan, pilih)
+    p = data["periode"]
+    nama = f"Paket-Claude-Ampyang-{cabang}-{p['awal']}_{p['akhir']}.md"
+    return Response(narasi.paket(data), media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{nama}"'})
 
 
 class PermintaanNarasi(BaseModel):
@@ -265,20 +295,33 @@ class PermintaanNarasi(BaseModel):
 
 @app.post("/api/narasi")
 def buat_narasi(req: PermintaanNarasi):
-    """Buat (ulang) narasi satu tab. Angka dihitung ulang dulu supaya narasi memakai data terbaru."""
-    if req.cabang not in ("Rungkut", "Mawar") or req.tab not in narasi.TAB:
-        raise HTTPException(400, "Cabang atau tab tidak dikenal.")
-    try:
-        tahun, b = (int(x) for x in req.bulan.split("-"))
-        date(tahun, b, 1)
-    except ValueError as e:
-        raise HTTPException(400, "Format bulan harus YYYY-MM.") from e
+    """Buat (ulang) narasi satu tab lewat API. Angka dihitung ulang dulu supaya narasi memakai data terbaru."""
+    if req.tab not in narasi.TAB:
+        raise HTTPException(400, "Tab tidak dikenal.")
     with db.koneksi() as con:
-        data = dashboard.hitung(con, req.cabang, tahun, b, req.pilih)
+        data = _dashboard(con, req.cabang, req.bulan, req.pilih)
         try:
             return narasi.buat(con, data, req.tab)
         except narasi.NarasiGagal as e:
             # Galat yang wajar (key belum diisi, internet putus, ditolak): dikirim sebagai pesan, bukan galat server.
+            return {"galat": str(e)}
+
+
+class PermintaanTempel(BaseModel):
+    cabang: str
+    bulan: str
+    pilih: str = "bulan"
+    teks: str
+
+
+@app.post("/api/narasi/tempel")
+def tempel_narasi(req: PermintaanTempel):
+    """Jawaban Claude yang ditempel user: dibaca per tab, angkanya diverifikasi, lalu disimpan."""
+    with db.koneksi() as con:
+        data = _dashboard(con, req.cabang, req.bulan, req.pilih)
+        try:
+            return narasi.simpan_manual(con, data, req.teks)
+        except narasi.NarasiGagal as e:
             return {"galat": str(e)}
 
 

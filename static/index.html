@@ -87,7 +87,7 @@
       <select id="dash-cabang"><option>Rungkut</option><option>Mawar</option></select>
     </label>
     <label>Bulan <select id="dash-bulan"></select></label>
-    <button class="tombol" id="dash-unduh" disabled title="Ekspor HTML mandiri dibangun di tahap 10">Unduh HTML</button>
+    <button class="tombol" id="dash-unduh" title="Satu file HTML berisi semua tab periode ini; bisa dibuka tanpa aplikasi dan dikirim ke atasan">Unduh HTML</button>
   </div>
   <div class="eyebrow" id="dash-minggu" role="tablist" aria-label="Pilih periode"></div>
   <h1 id="dash-judul">Dashboard</h1>
@@ -104,6 +104,19 @@
     <button class="tombol" id="asal-tutup" aria-label="Tutup">Tutup</button>
   </div>
   <div id="asal-isi"></div>
+</dialog>
+
+<dialog id="dialog-tempel">
+  <div class="dialog-kepala">
+    <h2>Tempel jawaban Claude</h2>
+    <button class="tombol" id="tempel-tutup" aria-label="Tutup">Tutup</button>
+  </div>
+  <p class="catatan" style="padding:0">Tempel seluruh jawaban Claude untuk paket periode yang sedang dibuka (berisi baris
+    <code>=== overview ===</code>, <code>FAKTA: …</code>, dst.). Setiap angka dicocokkan ke data periode ini; kalimat dengan angka
+    yang tidak ada di data dibuang. Narasi lama tab yang ada di jawaban akan diganti.</p>
+  <textarea id="tempel-isi" rows="14" placeholder="=== overview ===&#10;FAKTA: …"></textarea>
+  <div class="aksi"><button class="tombol utama" id="tempel-kirim">Cek &amp; simpan</button></div>
+  <div id="tempel-hasil"></div>
 </dialog>
 
 <!-- ================= PENGATURAN ================= -->
@@ -199,6 +212,7 @@
 </main>
 
 <script src="/static/vendor/chart.umd.js"></script>
+<script src="/static/dasar.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/dashboard.js"></script>
 <script src="/static/pengaturan.js"></script>

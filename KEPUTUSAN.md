@@ -209,3 +209,14 @@ Pengaturan → Kampanye iklan (pengaturan tersimpan di laptop user).
 | Gaya | Titik koma dipecah jadi dua kalimat secara otomatis. Temuan jenis dugaan selalu diawali "Dugaan:". |
 | Simpan | Per cabang + periode + tab, beserta sidik SHA-256 muatan. Sidik beda (unggah ulang, pengaturan berubah) → "data berubah sejak narasi dibuat"; tidak dibuat ulang otomatis supaya tidak memakai kuota tanpa diminta. |
 | Tanpa key | `ANTHROPIC_API_KEY` dibaca dari `.env` di folder aplikasi. Tanpa key: "Narasi otomatis tidak aktif"; semua angka tetap tampil. Galat API (key ditolak, internet putus, batas pemakaian) tampil sebagai pesan di kotak Temuan. |
+
+## Narasi tanpa API, ekspor HTML, tes browser (tahap 10, 6 Okt 2026)
+
+| Hal | Keputusan |
+|---|---|
+| Narasi | Atas permintaan user, Claude API tidak dipakai dulu. Jalur utama: **Unduh paket untuk Claude** (satu file Markdown: instruksi + format jawaban + JSON kedelapan tab, isi sama dengan muatan API, tanpa data orang) → user mengunggahnya ke claude.ai → **Tempel jawaban Claude** → setiap kalimat diverifikasi angkanya dengan aturan yang sama seperti jalur API, lalu disimpan dengan model "Claude (ditempel manual)". Jalur API tetap ada dan hanya muncul bila `ANTHROPIC_API_KEY` diisi. |
+| Format jawaban | Blok `=== kode_tab ===` lalu baris berlabel `FAKTA:`, `DUGAAN:`, `BELUM BISA DISIMPULKAN:`, `SARAN:`. Pembaca toleran terhadap bullet, nomor, cetak tebal, dan baris sambungan. Bagian dengan kode tab tak dikenal dilewati dan dicatat. Tab yang tidak ada di jawaban tidak diubah. |
+| Saran | Jenis baru "saran" (usulan tindakan + argumen dari angka). Saran tidak boleh memuat angka baru; kalimat dengan target/persentase karangan dibuang oleh verifikasi. Teks dugaan dan saran selalu diawali "Dugaan:"/"Saran:". |
+| Ekspor HTML | Satu file berisi CSS, Chart.js, data dashboard, dan script tampilan yang sama dengan aplikasi (inline). Tab, grafik, kotak Temuan, dan "Dari mana angka ini?" tetap berfungsi; tombol yang butuh server (pindah periode, unduh, tempel) tidak ada. Penutup `</script` di data/skrip diloloskan. |
+| Tes browser | `tests/test_browser.py` (Playwright + Chromium) atas `tests/fixtures/data_contoh.py` (data buatan 5 minggu dua cabang + loyalty + Instagram + pengaturan): semua tab, kedua cabang, minggu dan bulan, lebar 1280 dan 390px, halaman Upload/Riwayat/Pengaturan, alur tempel jawaban, dan file ekspor dibuka dari disk. Syarat: 0 error konsol, tanpa scroll horizontal, dialog "Dari mana angka ini?" terbuka. |
+| Laporan ESB opsional | Promotion, Customer Data, Staff Sales & Cancel, Cancel Menu Detail: **belum diolah** karena belum ada contoh file asli (aturan "jangan menebak"). Panel kualitas data menulis "belum diolah". |

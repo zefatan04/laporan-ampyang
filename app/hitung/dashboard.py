@@ -16,8 +16,6 @@ from app.hitung.minggu import (BULAN_PANJANG, Rentang, bulan_penuh, bulan_sebelu
 from app.hitung.nilai import bagi, jumlah
 from app.hitung.overview import tgl
 
-TAB_MENYUSUL: dict[str, tuple[str, int]] = {}
-
 
 def bulan_tersedia(con) -> list[str]:
     """Bulan dari data ESB pertama sampai terakhir, ditambah bulan yang punya data Instagram."""
@@ -104,9 +102,8 @@ def _kualitas(con, d: DataRentang, libur_ok: bool, senin_periode: list[date]) ->
     file = [
         {"file": "Bill Report (wajib)", "status": "ada" if cakup("bill") else "tidak ada", "keterangan": f"{cakup('bill')}/{len(d.hari)} hari"},
         {"file": "Sales Menu COGS Report (wajib)", "status": "ada" if cakup("cogs") else "tidak ada", "keterangan": f"{cakup('cogs')}/{len(d.hari)} hari"},
-    ] + [{"file": f, "status": "tidak ada", "keterangan": f"diolah mulai tahap {t}"} for f, t in (
-        ("Promotion Report", 10), ("Customer Data Report", 10), ("Staff Sales & Cancel Report", 10),
-        ("Cancel Menu Detail Report", 10))]
+    ] + [{"file": f, "status": "belum diolah", "keterangan": "opsional; parser dibuat setelah ada contoh file asli"} for f in (
+        "Promotion Report", "Customer Data Report", "Staff Sales & Cancel Report", "Cancel Menu Detail Report")]
     from app.hitung.membership import muat_loyalty
     L = muat_loyalty(con, d.cabang, d.awal, d.akhir)
     file.insert(2, {"file": "Data loyalty Keluarga Ampyang (CSV)", "status": "ada" if L.ada_data else "tidak ada",
@@ -206,7 +203,6 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
         "membership": membership.hitung(con, d, dp, label_prev),
         "sosmed": sosmed.hitung(con, d, senin_periode, (prev_r.awal, prev_r.akhir, senin_prev), label_prev, libur),
         "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi")), senin_periode),
-        "menyusul": [{"kode": k, "nama": n, "tahap": t} for k, (n, t) in TAB_MENYUSUL.items()],
         "jendela_waktu": P.JENDELA_WAKTU,
     }
     return hasil
