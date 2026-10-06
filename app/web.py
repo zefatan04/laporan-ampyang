@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app import db
+from app.hitung import dashboard
 from app.parser.esb import baca_file_esb, daftar_cabang_metadata
 from app.validasi import validasi_unggahan
 
@@ -113,4 +114,44 @@ def hapus(unggahan_id: int, cabang: str):
     with db.koneksi() as con:
         if not db.hapus_periode(con, unggahan_id, cabang):
             raise HTTPException(404, "Periode tidak ditemukan.")
+    return {"ok": True}
+
+
+@app.get("/api/dashboard/bulan")
+def daftar_bulan():
+    with db.koneksi() as con:
+        return {"bulan": dashboard.bulan_tersedia(con)}
+
+
+@app.get("/api/dashboard")
+def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
+    if cabang not in ("Rungkut", "Mawar"):
+        raise HTTPException(400, "Cabang tidak dikenal.")
+    try:
+        tahun, b = (int(x) for x in bulan.split("-"))
+        date(tahun, b, 1)
+    except ValueError as e:
+        raise HTTPException(400, "Format bulan harus YYYY-MM.") from e
+    with db.koneksi() as con:
+        return dashboard.hitung(con, cabang, tahun, b, pilih)
+
+
+@app.get("/api/pengaturan")
+def lihat_pengaturan():
+    from app import pengaturan
+    with db.koneksi() as con:
+        return pengaturan.semua(con)
+
+
+@app.put("/api/pengaturan/{kunci}")
+def ubah_pengaturan(kunci: str, isi: dict):
+    from app import pengaturan
+    if kunci not in pengaturan.BAWAAN:
+        raise HTTPException(404, "Pengaturan tidak dikenal.")
+    try:
+        nilai = pengaturan.periksa(kunci, isi.get("nilai"))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    with db.koneksi() as con:
+        pengaturan.simpan(con, kunci, nilai)
     return {"ok": True}

@@ -69,18 +69,73 @@
 
 <!-- ================= DASHBOARD ================= -->
 <section id="hal-dashboard" class="hal" hidden>
-  <h1>Dashboard</h1>
-  <div class="kartu kosong">Dashboard dibangun di tahap 4. Data yang sudah disimpan akan muncul di sini.</div>
+  <div class="filter-baris">
+    <label>Cabang
+      <select id="dash-cabang"><option>Rungkut</option><option>Mawar</option></select>
+    </label>
+    <label>Bulan <select id="dash-bulan"></select></label>
+    <button class="tombol" id="dash-unduh" disabled title="Ekspor HTML mandiri dibangun di tahap 10">Unduh HTML</button>
+  </div>
+  <div class="eyebrow" id="dash-minggu" role="tablist" aria-label="Pilih periode"></div>
+  <h1 id="dash-judul">Dashboard</h1>
+  <p class="sub" id="dash-sub"></p>
+  <div id="dash-peringatan"></div>
+  <nav class="tab" id="dash-tab" aria-label="Isi dashboard"></nav>
+  <div id="dash-isi"></div>
+  <div id="dash-kualitas"></div>
 </section>
+
+<dialog id="dialog-asal">
+  <div class="dialog-kepala">
+    <h2 id="asal-judul">Dari mana angka ini?</h2>
+    <button class="tombol" id="asal-tutup" aria-label="Tutup">Tutup</button>
+  </div>
+  <div id="asal-isi"></div>
+</dialog>
 
 <!-- ================= PENGATURAN ================= -->
 <section id="hal-pengaturan" class="hal" hidden>
   <h1>Pengaturan</h1>
-  <div class="kartu kosong">Pengaturan (kategori menu, promo, target, anggaran iklan) dibangun bertahap mulai tahap 4.</div>
+  <p class="sub">Perubahan langsung berlaku ke semua data, termasuk data lama. Daftar promo, menu baru, dan anggaran iklan ditambahkan di tahap 6 dan 8.</p>
+
+  <div class="kartu" id="set-libur">
+    <h2 class="tanpa-jarak">Hari libur nasional &amp; Ramadan</h2>
+    <p class="catatan">Satu baris per hari: <code>YYYY-MM-DD Nama</code>. Cuti bersama tidak dimasukkan (dianggap hari operasional biasa).
+      Hari libur ditandai di grafik dan tidak dipakai sebagai pembanding hari biasa.</p>
+    <label>Hari libur <textarea rows="10" id="isi-libur"></textarea></label>
+    <label>Ramadan (satu baris per tahun: <code>YYYY-MM-DD YYYY-MM-DD</code>) <textarea rows="2" id="isi-ramadan"></textarea></label>
+    <label class="centang"><input type="checkbox" id="isi-libur-ok"> <span>Saya sudah mencocokkan daftar ini dengan SKB 3 Menteri</span></label>
+    <div class="aksi"><button class="tombol utama" data-simpan="libur">Simpan hari libur</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Target omzet (opsional)</h2>
+    <p class="catatan">Kosongkan bila tidak ada target; dashboard tidak menampilkan target yang tidak diisi. Satu baris: <code>Cabang YYYY-MM angka</code>, mis. <code>Rungkut 2026-10 250000000</code>.</p>
+    <textarea rows="4" id="isi-target"></textarea>
+    <div class="aksi"><button class="tombol utama" data-simpan="target">Simpan target</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Kategori menu</h2>
+    <p class="catatan">Isi dengan nama Menu Category / Menu Category Detail dari ESB, dipisah koma. Makanan utama = kategori makanan, kecuali detail kudapan, toast, dan paket.</p>
+    <div id="isi-kategori" class="kisi-isian"></div>
+    <div class="aksi"><button class="tombol utama" data-simpan="kategori">Simpan kategori</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Minuman panas/dingin per menu</h2>
+    <p class="catatan">Untuk minuman yang namanya tidak mengandung kata panas/hot atau dingin/es/ice. Satu baris: <code>Nama menu = panas</code> atau <code>= dingin</code>.
+      Isi awal: semua minuman tanpa kata kunci dianggap panas (keputusan 6 Okt 2026).</p>
+    <textarea rows="10" id="isi-suhu"></textarea>
+    <div class="aksi"><button class="tombol utama" data-simpan="suhu">Simpan</button><span class="hasil"></span></div>
+  </div>
 </section>
 
 </main>
 
+<script src="/static/vendor/chart.umd.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/dashboard.js"></script>
+<script src="/static/pengaturan.js"></script>
 </body>
 </html>

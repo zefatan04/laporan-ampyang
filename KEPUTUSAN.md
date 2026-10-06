@@ -48,3 +48,23 @@ harus bisa berjalan tanpa data Instagram.
   hanya di tampilan.
 - Teks kategori diakhiri spasi (`'TEH '`, `'ADD ON '`); dibersihkan.
 - Kolom `Customer Name` dan `Additional Info` berisi nama pelanggan; tidak dibaca.
+
+## Kategori, rata-rata bill, suhu, akun IG (6 Okt 2026)
+
+| Hal | Keputusan |
+|---|---|
+| SHOWCASE | Sub-kelompok "minuman kemasan" di tab Minuman; tidak ikut panas/dingin & attach rate utama. |
+| ADD ON | Kelompok "Add-on & kemasan", tidak masuk tab Makanan/Minuman. |
+| ZUPER FOOD | Kelompok sendiri, tidak dicampur makanan utama Ampyang (juga tidak dihitung porsi orang makan). |
+| JASA, AKSESORIS | Non-F&B. Tetap di Grand Total; omzetnya ditampilkan terpisah di Overview (basis Subtotal). |
+| Rata-rata bill | **F&B saja.** Bill berisi item non-F&B saja dan bill campuran dikeluarkan (Grand Total bill campuran tidak bisa dipisah tanpa estimasi); jumlahnya ditampilkan di "Dari mana angka ini?". |
+| Panas/dingin | 17 minuman tanpa kata kunci dianggap **panas** (asumsi user), bisa diubah per menu di Pengaturan. |
+| Akun Instagram | CSV di folder `Sosmed` = akun **Brand**. |
+
+Temuan tambahan dari data: anak paket WFA (Rp0) berisi kudapan + minuman,
+bukan makanan utama. "Paket Catering" tercatat FOOD / SPESIAL MENU dengan
+qty puluhan per bill: ikut dihitung porsi, dan bill ≥10 porsi disebut
+terpisah di rincian ukuran rombongan.
+
+Hari libur 2026 di Pengaturan adalah isi awal yang **belum diverifikasi**;
+dashboard menampilkan peringatan sampai user mencentang "sudah dicocokkan".

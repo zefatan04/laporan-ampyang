@@ -60,3 +60,24 @@ def test_tidak_cocok_butuh_centang(tmp_path, klien):
     assert h["butuh_konfirmasi"]
     assert klien.post("/api/simpan", json={"token": h["token"]}).status_code == 409
     assert klien.post("/api/simpan", json={"token": h["token"], "simpan_walau_tidak_cocok": True}).status_code == 200
+
+
+def test_pengaturan_simpan_dan_tolak(klien):
+    s = klien.get("/api/pengaturan").json()
+    assert s["hari_libur_terverifikasi"] is False and s["target_omzet"] == {}
+    assert klien.put("/api/pengaturan/target_omzet", json={"nilai": {"Rungkut|2026-10": 250000000}}).status_code == 200
+    assert klien.get("/api/pengaturan").json()["target_omzet"] == {"Rungkut|2026-10": 250000000}
+    assert klien.put("/api/pengaturan/target_omzet", json={"nilai": {"Darmo|2026-10": 1}}).status_code == 400
+    assert klien.put("/api/pengaturan/suhu_per_menu", json={"nilai": {"Juice Jeruk": "hangat"}}).status_code == 400
+    assert klien.put("/api/pengaturan/hari_libur", json={"nilai": [{"tanggal": "2026-13-01", "nama": "x"}]}).status_code == 400
+    assert klien.put("/api/pengaturan/tidak_ada", json={"nilai": 1}).status_code == 404
+
+
+def test_dashboard_api(tmp_path, klien):
+    h = klien.post("/api/unggah", data={"awal": A.isoformat(), "akhir": B.isoformat()}, files=_file(tmp_path)).json()
+    klien.post("/api/simpan", json={"token": h["token"]})
+    assert klien.get("/api/dashboard/bulan").json()["bulan"] == ["2026-09", "2026-10"]
+    d = klien.get("/api/dashboard", params={"cabang": "Rungkut", "bulan": "2026-09", "pilih": "M4"}).json()
+    assert d["overview"]["kartu"]["grand_total"]["teks"] == "Rp88.000"
+    assert klien.get("/api/dashboard", params={"cabang": "Darmo", "bulan": "2026-09"}).status_code == 400
+    assert klien.get("/api/dashboard", params={"cabang": "Rungkut", "bulan": "2026-13"}).status_code == 400

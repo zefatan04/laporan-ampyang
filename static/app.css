@@ -135,3 +135,63 @@ td.angka, th.angka { text-align: right; font-variant-numeric: tabular-nums; whit
   .kepala, .aksi, form { display: none !important; }
   body { background: #fff; }
 }
+
+/* ---------- dashboard ---------- */
+.filter-baris { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-bottom: .75rem; }
+.filter-baris label { min-width: 150px; }
+.eyebrow { display: flex; flex-wrap: wrap; gap: .4rem; margin: .25rem 0 1rem; }
+.eyebrow button {
+  font: inherit; font-size: .85rem; text-align: left; cursor: pointer;
+  border: 1px solid var(--garis); background: #fff; color: var(--teks);
+  border-radius: 8px; padding: .35rem .6rem; line-height: 1.25;
+}
+.eyebrow button small { display: block; color: var(--teks-2); font-size: .75rem; }
+.eyebrow button[aria-selected=true] { background: var(--terakota); border-color: var(--terakota); color: #fff; }
+.eyebrow button[aria-selected=true] small { color: #fbe0d5; }
+.eyebrow button.kosong { color: var(--teks-2); }
+.tab { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--garis); margin-bottom: 1rem; }
+.tab button {
+  font: inherit; font-size: .9rem; white-space: nowrap; cursor: pointer; background: none; border: 0;
+  border-bottom: 3px solid transparent; padding: .5rem .65rem; color: var(--teks-2);
+}
+.tab button[aria-selected=true] { color: var(--terakota-tua); border-bottom-color: var(--terakota); font-weight: 600; }
+
+.kisi-kartu { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+.kartu-angka { background: #fff; border: 1px solid var(--garis); border-radius: var(--radius); padding: .8rem .9rem;
+  display: flex; flex-direction: column; gap: .2rem; }
+.kartu-angka .judul { color: var(--teks-2); font-size: .85rem; }
+.kartu-angka .angka-besar { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kartu-angka .angka-besar.tidak_diketahui { font-size: .95rem; font-weight: 600; color: var(--teks-2); }
+.kartu-angka .ket { color: var(--teks-2); font-size: .8rem; }
+.kartu-angka .awas { color: var(--merah); font-size: .8rem; }
+.kartu-angka.merah { border-color: #e9b9b5; box-shadow: inset 3px 0 0 var(--merah); }
+.tautan-asal { font: inherit; font-size: .8rem; background: none; border: 0; padding: 0; margin-top: .25rem;
+  color: var(--terakota-tua); text-decoration: underline; cursor: pointer; align-self: flex-start; }
+
+.naik { color: var(--hijau); font-weight: 600; }
+.turun { color: var(--merah); font-weight: 600; }
+.tetap { color: var(--teks-2); }
+
+.grafik { position: relative; height: 260px; }
+.catatan { color: var(--teks-2); font-size: .85rem; margin: .5rem 0 0; padding-left: 1.1rem; }
+.catatan li { margin: .15rem 0; }
+.rekon td:first-child { width: 2rem; color: var(--teks-2); }
+.rekon tr.total td { font-weight: 700; border-top: 2px solid var(--teks); }
+
+dialog { border: 0; border-radius: var(--radius); padding: 1rem 1.1rem; width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px); overflow: auto; }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.dialog-kepala { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+.dialog-kepala h2 { margin: 0; }
+dl.asal dt { font-weight: 600; margin-top: .65rem; font-size: .9rem; }
+dl.asal dd { margin: .15rem 0 0; }
+dl.asal ul { margin: .1rem 0; padding-left: 1.1rem; }
+h3.sub-judul { font-size: .95rem; margin: 1rem 0 .4rem; }
+td .ket { display: block; color: var(--teks-2); font-size: .8rem; }
+textarea { font: .9rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--teks);
+  width: 100%; padding: .5rem; border: 1px solid var(--garis); border-radius: 8px; resize: vertical; }
+h2.tanpa-jarak { margin-top: 0; }
+.kisi-isian { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .6rem; }
+.kisi-isian input { font: inherit; padding: .4rem .5rem; border: 1px solid var(--garis); border-radius: 8px; min-width: 0; }
+.hasil { font-size: .88rem; }
+code { background: var(--abu-muda); padding: 0 .25rem; border-radius: 4px; }

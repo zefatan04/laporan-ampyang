@@ -42,6 +42,8 @@ function buka() {
   HAL.forEach((h) => { document.getElementById(`hal-${h}`).hidden = h !== aktif; });
   document.querySelectorAll(".nav a").forEach((a) => a.classList.toggle("aktif", a.dataset.hal === aktif));
   if (aktif === "riwayat") muatRiwayat();
+  if (aktif === "dashboard" && window.bukaDashboard) window.bukaDashboard(query);
+  if (aktif === "pengaturan" && window.bukaPengaturan) window.bukaPengaturan();
   if (aktif === "upload" && query) {
     const p = new URLSearchParams(query);
     const f = document.getElementById("form-unggah");
