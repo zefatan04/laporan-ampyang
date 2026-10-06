@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laporan Ampyang</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23b8451f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="kepala">
+  <div class="kepala-isi">
+    <div class="merek">Kedai Ampyang <span>Laporan</span></div>
+    <nav class="nav" aria-label="Menu utama">
+      <a href="#upload" data-hal="upload">Upload</a>
+      <a href="#riwayat" data-hal="riwayat">Riwayat data</a>
+      <a href="#dashboard" data-hal="dashboard">Dashboard</a>
+      <a href="#pengaturan" data-hal="pengaturan">Pengaturan</a>
+    </nav>
+  </div>
+</header>
+
+<main class="isi">
+
+<!-- ================= UPLOAD ================= -->
+<section id="hal-upload" class="hal" hidden>
+  <h1>Upload data ESB</h1>
+  <p class="sub">Unggah Bill Report dan Sales Menu COGS Report untuk periode yang sama. Satu file boleh berisi
+    Rungkut dan Mawar sekaligus. Data baru disimpan setelah Anda membaca laporan validasi dan menekan <b>Simpan</b>.</p>
+
+  <form id="form-unggah" class="kartu">
+    <div class="baris-isian">
+      <label>Cabang di file
+        <select name="cabang">
+          <option value="">Ikuti isi file (Rungkut &amp; Mawar)</option>
+          <option value="Rungkut">Rungkut saja</option>
+          <option value="Mawar">Mawar saja</option>
+        </select>
+      </label>
+      <label>Tanggal mulai <input type="date" name="awal" required></label>
+      <label>Tanggal akhir <input type="date" name="akhir" required></label>
+    </div>
+    <label class="zona" id="zona">
+      <input type="file" name="files" multiple accept=".xlsx" id="input-file">
+      <span class="zona-judul">Tarik file .xlsx ke sini, atau klik untuk memilih</span>
+      <span class="zona-daftar" id="daftar-file">Belum ada file dipilih.</span>
+    </label>
+    <div class="aksi">
+      <button type="submit" class="tombol utama" id="tombol-periksa">Periksa file</button>
+    </div>
+  </form>
+
+  <div id="hasil-validasi"></div>
+</section>
+
+<!-- ================= RIWAYAT ================= -->
+<section id="hal-riwayat" class="hal" hidden>
+  <h1>Riwayat data</h1>
+  <p class="sub">Status per minggu (Senin–Minggu). Hari tutup tetap dihitung tercakup karena datanya ada.</p>
+  <div class="legenda">
+    <span class="lencana lengkap">Lengkap</span>
+    <span class="lencana sebagian">Sebagian</span>
+    <span class="lencana tidak_ada">Tidak ada</span>
+  </div>
+  <div id="riwayat-minggu"></div>
+  <h2>Periode tersimpan</h2>
+  <div id="riwayat-periode"></div>
+</section>
+
+<!-- ================= DASHBOARD ================= -->
+<section id="hal-dashboard" class="hal" hidden>
+  <h1>Dashboard</h1>
+  <div class="kartu kosong">Dashboard dibangun di tahap 4. Data yang sudah disimpan akan muncul di sini.</div>
+</section>
+
+<!-- ================= PENGATURAN ================= -->
+<section id="hal-pengaturan" class="hal" hidden>
+  <h1>Pengaturan</h1>
+  <div class="kartu kosong">Pengaturan (kategori menu, promo, target, anggaran iklan) dibangun bertahap mulai tahap 4.</div>
+</section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

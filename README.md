@@ -8,8 +8,9 @@ Prinsip utama: **angka yang salah lebih buruk daripada angka yang kosong.**
 Data yang tidak ada atau tidak cocok ditampilkan sebagai "Tidak diketahui"
 beserta alasannya.
 
-> Status: tahap 2 dari 10 (parser + validasi Bill Report & COGS Report).
-> Halaman web belum tersedia.
+> Status: tahap 3 dari 10. Sudah bisa: upload Bill Report + COGS Report,
+> laporan validasi, simpan ke database, riwayat data per minggu, hapus/unggah ulang.
+> Dashboard menyusul di tahap 4.
 
 ## Memasang (Windows)
 
@@ -17,7 +18,20 @@ beserta alasannya.
 2. Klik dua kali `scripts\pasang.bat`. Kalau Python belum ada, file ini
    memasangnya lewat winget, lalu minta dijalankan sekali lagi.
 
-## Mengecek file ESB (sementara, lewat terminal)
+## Menjalankan
+
+Klik dua kali `scripts\jalankan.bat`. Browser terbuka ke `http://localhost:8000`.
+Tutup jendela hitam untuk mematikan aplikasi. Data tersimpan di `data\ampyang.duckdb`.
+
+### Export dari ESB yang dibutuhkan (setiap minggu, Senin–Minggu)
+
+1. **Sales Recapitulation Report** → Sales Report Type: *Bill Report*.
+2. **Sales Menu COGS Report** → *Show Menu Package* dicentang.
+
+Keduanya dengan periode yang **sama persis**. Boleh memilih dua cabang
+sekaligus dalam satu export.
+
+## Mengecek file ESB lewat terminal (tanpa menyimpan)
 
 ```
 .venv\Scripts\python -m app.cek_file --awal 2026-09-28 --akhir 2026-10-04 bill.xlsx cogs.xlsx
