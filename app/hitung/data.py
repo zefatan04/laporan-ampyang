@@ -16,7 +16,7 @@ import pandas as pd
 
 from app import pengaturan
 from app.hitung.kategori import tambah_kelompok
-from app.validasi import tandai_salah_input_cogs, tandai_tanpa_hpp
+from app.validasi import tandai_hpp_rendah, tandai_salah_input_cogs, tandai_tanpa_hpp
 
 
 @dataclass
@@ -26,7 +26,7 @@ class DataRentang:
     akhir: date
     bill_semua: pd.DataFrame          # termasuk Non Sales
     bill: pd.DataFrame                # Sales saja
-    cogs: pd.DataFrame                # Sales saja, + kelompok, salah_input, tanpa_hpp
+    cogs: pd.DataFrame                # Sales saja, + kelompok, hpp_tinggi/rendah, salah_input, tanpa_hpp
     tercakup: list[date]              # bill DAN cogs tersedia
     tutup: list[date]
     parsial: list[date]
@@ -85,7 +85,10 @@ def muat(con, cabang: str, awal: date, akhir: date) -> DataRentang:
     bill = bill_semua[bill_semua["sales_type"] == "Sales"].reset_index(drop=True)
 
     cogs = tambah_kelompok(cogs, pengaturan.ambil(con, "kategori"))
-    cogs["salah_input"] = pd.Series(tandai_salah_input_cogs(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
+    # salah_input = HPP terlalu tinggi ATAU terlalu rendah; keduanya keluar dari margin.
+    cogs["hpp_tinggi"] = pd.Series(tandai_salah_input_cogs(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
+    cogs["hpp_rendah"] = pd.Series(tandai_hpp_rendah(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
+    cogs["salah_input"] = cogs["hpp_tinggi"] | cogs["hpp_rendah"]
     cogs["tanpa_hpp"] = pd.Series(tandai_tanpa_hpp(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
 
     per_hari = bill.groupby("sales_date").size().to_dict() if len(bill) else {}

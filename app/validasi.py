@@ -360,6 +360,18 @@ def tandai_salah_input_cogs(cogs: pd.DataFrame) -> pd.Series:
     return cogs.apply(salah, axis=1).astype(bool) if len(cogs) else pd.Series(dtype=bool)
 
 
+def tandai_hpp_rendah(cogs: pd.DataFrame) -> pd.Series:
+    """True untuk baris Price > 0 dan COGS > 0 dengan HPP per unit < 5% x Price.
+
+    COGS = 0 tidak termasuk di sini: itu "tanpa data HPP" (cek 7)."""
+    def rendah(r) -> bool:
+        p, q, c = r["price"], r["qty"], r["cogs_total"]
+        if p is None or q is None or c is None or p <= 0 or q <= 0 or c <= 0:
+            return False
+        return (c / q) < Decimal(str(P.BATAS_HPP_RENDAH)) * p
+    return cogs.apply(rendah, axis=1).astype(bool) if len(cogs) else pd.Series(dtype=bool)
+
+
 def tandai_tanpa_hpp(cogs: pd.DataFrame) -> pd.Series:
     """True untuk baris Price > 0 dan COGS Total = 0 (menu tanpa resep)."""
     def tanpa(r) -> bool:
@@ -372,17 +384,20 @@ def cek_salah_input(cogs: HasilBaca | None) -> Cek:
     if cogs is None or cogs.data is None:
         return Cek(6, "Salah input resep/COGS", TIDAK_BISA, "COGS Report tidak ada atau tidak terbaca.")
     c = cogs.data
-    m = tandai_salah_input_cogs(c)
-    pilih = c[m]
+    tinggi, rendah = tandai_salah_input_cogs(c), tandai_hpp_rendah(c)
     rincian = []
-    for (menu, tgl), g in pilih.groupby(["menu_bersih", "sales_date"], sort=True):
-        rincian.append({"Menu": menu, "Tanggal": f"{tgl:%d-%m-%Y}", "Jumlah baris": len(g),
-                        "Harga": format_rupiah(g["price"].iloc[0]),
-                        "COGS tercatat": format_rupiah(_jumlah(g["cogs_total"])),
-                        "HPP/unit": format_rupiah(_jumlah(g["cogs_total"]) / _jumlah(g["qty"]))})
-    return Cek(6, "Salah input resep/COGS", PERINGATAN if len(pilih) else LULUS,
-               f"{len(pilih)} baris ditandai salah input (HPP/unit > {format_angka(Decimal(str(P.FAKTOR_SALAH_INPUT_COGS)), 1)}× harga) "
-               "dan dikeluarkan dari perhitungan margin." if len(pilih) else "Tidak ada baris yang HPP-nya melebihi batas.",
+    for arah, m in (("terlalu tinggi", tinggi), ("terlalu rendah", rendah)):
+        for (menu, tgl), g in c[m].groupby(["menu_bersih", "sales_date"], sort=True):
+            rincian.append({"Arah": arah, "Menu": menu, "Tanggal": f"{tgl:%d-%m-%Y}", "Jumlah baris": len(g),
+                            "Harga": format_rupiah(g["price"].iloc[0]),
+                            "COGS tercatat": format_rupiah(_jumlah(g["cogs_total"])),
+                            "HPP/unit": format_rupiah(_jumlah(g["cogs_total"]) / _jumlah(g["qty"]))})
+    nt, nr = int(tinggi.sum()), int(rendah.sum())
+    batas = (f"HPP/unit > {format_angka(Decimal(str(P.FAKTOR_SALAH_INPUT_COGS)), 1)}× harga atau "
+             f"< {format_angka(Decimal(str(P.BATAS_HPP_RENDAH * 100)))}% harga")
+    return Cek(6, "Salah input resep/COGS", PERINGATAN if nt or nr else LULUS,
+               f"{nt} baris HPP terlalu tinggi dan {nr} baris HPP terlalu rendah ({batas}); "
+               "dikeluarkan dari perhitungan margin." if nt or nr else f"Tidak ada baris di luar batas ({batas}).",
                rincian, cogs.nama_file)
 
 

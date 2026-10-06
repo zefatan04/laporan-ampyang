@@ -80,10 +80,10 @@ def test_makanan(con):
     # Hanya C1 layak margin: (37.800 − 15.000) / 37.800 = 60,3%; cakupan 37.800 / 79.800 = 47,4%
     assert k["margin"]["teks"] == "60,3%" and k["margin"]["label"] == "mencakup 47,4% omzet"
     keluar = {x["alasan"]: x["jumlah"] for x in k["margin"]["asal"]["dikeluarkan"]}
-    assert keluar == {"Salah input resep": 1}
+    assert keluar == {"Salah input resep (HPP terlalu tinggi/rendah)": 1}
     nasi = t["menu"][0]
     assert nasi["Menu"] == "Nasi Goreng" and nasi["Harga (modus)"] == "Rp42.000" and nasi["Margin %"] == "60,3%"
-    assert "1 dari 2 baris" in nasi["Catatan"] and "salah input" in nasi["Catatan"]
+    assert "1 dari 2 baris" in nasi["Catatan"] and "HPP terlalu tinggi" in nasi["Catatan"]
     assert t["harga"]["baris"] == [{"Menu": "Nasi Goreng", "Harga sebelumnya": "Rp40.000",
                                     "Harga sekarang": "Rp42.000", "Selisih": "+Rp2.000"}]
     assert t["naik_turun"]["naik"][0]["Menu"] == "Nasi Goreng" and t["naik_turun"]["naik"][0]["Selisih omzet"] == "+Rp4.000"

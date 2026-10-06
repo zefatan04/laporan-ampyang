@@ -157,6 +157,18 @@ def test_salah_input_cogs():
     assert tandai_salah_input_cogs(df).tolist() == [True, False, False, False]
 
 
+def test_hpp_terlalu_rendah():
+    from app.validasi import tandai_hpp_rendah
+    df = pd.DataFrame([
+        {"price": Decimal(18900), "qty": Decimal(1), "cogs_total": Decimal(28)},     # Juice Jambu asli: 0,15%
+        {"price": Decimal(10000), "qty": Decimal(2), "cogs_total": Decimal(999)},    # 499,5/unit < 500
+        {"price": Decimal(10000), "qty": Decimal(2), "cogs_total": Decimal(1000)},   # tepat 5%: tidak
+        {"price": Decimal(10000), "qty": Decimal(1), "cogs_total": Decimal(0)},      # tanpa HPP: cek 7, bukan ini
+        {"price": Decimal(0), "qty": Decimal(1), "cogs_total": Decimal(10)},         # item paket
+    ])
+    assert tandai_hpp_rendah(df).tolist() == [True, True, False, False, False]
+
+
 def test_cek_salah_input_dan_tanpa_hpp(tmp_path):
     _, c = _pasangan(tmp_path, items=[
         item("S1", T[0], "Nasi Goreng", 1, 25000, 90000),
@@ -165,7 +177,7 @@ def test_cek_salah_input_dan_tanpa_hpp(tmp_path):
         item("S2", T[1], "Kopi", 1, 30000, 9000),
     ])
     s = cek_salah_input(c)
-    assert s.status == PERINGATAN and s.rincian[0]["Menu"] == "Nasi Goreng"
+    assert s.status == PERINGATAN and s.rincian[0]["Menu"] == "Nasi Goreng" and s.rincian[0]["Arah"] == "terlalu tinggi"
     t = cek_tanpa_hpp(c)
     assert t.status == PERINGATAN and [r["Menu"] for r in t.rincian] == ["Es Teh"]
 

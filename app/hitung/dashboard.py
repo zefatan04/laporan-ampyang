@@ -113,7 +113,6 @@ def _kualitas(con, d: DataRentang, libur_ok: bool) -> dict:
                       "status": "TIDAK COCOK (disimpan dengan konfirmasi)" if p[4] else "cocok"})
     c = d.cogs
     tanpa = c[c["tanpa_hpp"]]
-    salah = c[c["salah_input"]]
     belum = sorted({f"{k} / {x}" for k, x in zip(c[c["kelompok"] == "lainnya"]["menu_category"],
                                                     c[c["kelompok"] == "lainnya"]["menu_category_detail"])})
     hari = []
@@ -129,7 +128,8 @@ def _kualitas(con, d: DataRentang, libur_ok: bool) -> dict:
         "hari": hari,
         "baris_dikeluarkan": [
             {"hal": "Bill Sales Type bukan 'Sales'", "jumlah": int((d.bill_semua["sales_type"] != "Sales").sum())},
-            {"hal": "Baris COGS salah input resep (HPP/unit > 1,5× harga) — keluar dari margin", "jumlah": int(len(salah))},
+            {"hal": "Baris COGS HPP terlalu tinggi (HPP/unit > 1,5× harga) — keluar dari margin", "jumlah": int(c["hpp_tinggi"].sum())},
+            {"hal": "Baris COGS HPP terlalu rendah (HPP/unit < 5% harga) — keluar dari margin", "jumlah": int(c["hpp_rendah"].sum())},
         ],
         "tanpa_hpp": {"menu": int(tanpa["menu_bersih"].nunique()), "baris": int(len(tanpa)),
                       "omzet": format_rupiah(jumlah(tanpa["total"])),

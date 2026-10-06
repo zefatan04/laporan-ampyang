@@ -20,8 +20,11 @@ PARSIAL_AMBANG_JAM = 2
 TOLERANSI_RUPIAH = 1
 TOLERANSI_QTY = 0
 
-# Salah input resep: HPP per unit > FAKTOR x harga jual.
+# Salah input resep: HPP per unit > FAKTOR x harga jual (terlalu tinggi), atau
+# HPP per unit < BATAS_HPP_RENDAH x harga jual (terlalu rendah, keputusan
+# 7 Okt 2026; contoh nyata: Juice Jambu HPP Rp28 untuk harga Rp18.900).
 FAKTOR_SALAH_INPUT_COGS = 1.5
+BATAS_HPP_RENDAH = 0.05
 
 # ---------------------------------------------------------------------------
 # Kategori menu (bisa diubah di Pengaturan). Dicocokkan setelah teks

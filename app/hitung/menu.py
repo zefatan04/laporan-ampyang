@@ -74,6 +74,7 @@ def tabel_menu(c: pd.DataFrame) -> pd.DataFrame:
             "margin": bersih_ok - jumlah(ok["cogs_total"]) if len(ok) else None,
             "baris": len(g), "baris_hpp": len(ok),
             "tanpa_hpp": int(g["tanpa_hpp"].sum()), "salah": int(g["salah_input"].sum()),
+            "tinggi": int(g["hpp_tinggi"].sum()), "rendah": int(g["hpp_rendah"].sum()),
             "harga": _modus(g["price"]),
         })
     return pd.DataFrame(hasil).sort_values("omzet", ascending=False, key=lambda s: s.map(float)).reset_index(drop=True)
@@ -89,8 +90,10 @@ def _baris_menu(r) -> dict:
     ket = []
     if r["margin"] is not None and r["baris_hpp"] < r["baris"]:
         ket.append(f"margin dari {r['baris_hpp']} dari {r['baris']} baris")
-    if r["salah"]:
-        ket.append(f"{r['salah']} baris salah input resep")
+    if r["tinggi"]:
+        ket.append(f"{r['tinggi']} baris HPP terlalu tinggi")
+    if r["rendah"]:
+        ket.append(f"{r['rendah']} baris HPP terlalu rendah")
     return {"Menu": r["menu"], "Sub-kategori": r["sub"], "Qty": format_angka(r["qty"]),
             "Omzet (Total)": format_rupiah(r["omzet"]), "Omzet bersih": format_rupiah(r["bersih"]),
             "Harga (modus)": format_rupiah(r["harga"]) if r["harga"] is not None else "-",
@@ -168,10 +171,10 @@ def _kartu(d: DataRentang, r: dict, judul: str) -> dict:
     cakup = persen(r["bersih_ok"], r["bersih"])
     a = asal("(Σ omzet bersih − Σ COGS) ÷ Σ omzet bersih, hanya baris ber-HPP",
              [f"{SUMBER_COGS} · Total, Discount Total, COGS Total"],
-             filt + ["COGS Total > 0", "Bukan salah input resep (HPP/unit ≤ 1,5 × harga)"],
+             filt + ["COGS Total > 0", "Bukan salah input resep (HPP/unit antara 5% dan 150% harga)"],
              len(r["bayar"]) - r["baris_tanpa_hpp"] - r["baris_salah"],
              [{"alasan": "Tanpa data HPP (COGS = 0)", "jumlah": r["baris_tanpa_hpp"]},
-              {"alasan": "Salah input resep", "jumlah": r["baris_salah"]}],
+              {"alasan": "Salah input resep (HPP terlalu tinggi/rendah)", "jumlah": r["baris_salah"]}],
              [f"Mencakup {format_persen(cakup)} omzet bersih kelompok ini." if cakup is not None else "Cakupan tidak diketahui."])
     if r["bersih_ok"]:
         k["margin"] = {**nilai(persen(r["bersih_ok"] - r["hpp_ok"], r["bersih_ok"]), "persen", a, peringatan=pr),

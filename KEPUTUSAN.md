@@ -92,3 +92,11 @@ dashboard menampilkan peringatan sampai user mencentang "sudah dicocokkan".
   mulai, tab); penjualannya dihitung sejak tanggal mulai.
 - Cek silang: Σ omzet semua kelompok = Σ Subtotal Bill (Sales), selisih Rp0
   untuk kedua cabang minggu 28 Sep – 4 Okt.
+
+## HPP terlalu rendah & attach rate (7 Okt 2026)
+
+- Baris dengan HPP/unit **< 5% harga jual** (dan COGS > 0) ditandai "HPP
+  terlalu rendah" dan dikeluarkan dari margin, sama seperti HPP terlalu
+  tinggi (> 1,5×). Contoh nyata: Juice Jambu HPP Rp21–32 per gelas untuk
+  harga Rp18.900; Teh O Panas HPP Rp286–388 untuk harga Rp13.000.
+- Definisi attach rate (pembagi = bill F&B) **dikonfirmasi user**.
