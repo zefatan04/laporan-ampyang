@@ -17,3 +17,15 @@ kalau ada yang berubah, perbarui di sini dulu.
 | 10 | Panas/dingin | Dari kata kunci nama menu, bisa diedit; tanpa kata kunci → "tidak diketahui". |
 | 11 | Pemasangan | Windows. `scripts/pasang.bat` memasang Python (winget) dan paket. |
 | 12 | Claude API | Hanya angka agregat dan nama menu yang dikirim; tanpa nomor WA/nama pelanggan. |
+
+## Data sosial media bersifat opsional (6 Okt 2026)
+
+Akun Instagram sedang tidak bisa diakses, jadi seluruh pengolahan sosmed
+harus bisa berjalan tanpa data Instagram.
+
+| Kondisi | Perilaku |
+|---|---|
+| Tidak ada data IG | Tab 8 tetap tampil. Metrik IG: "Tidak diketahui — data Instagram periode ini tidak diunggah". Bagian kampanye yang hanya butuh ESB + form kampanye (tambahan bill vs pembanding, biaya iklan per bill tambahan) tetap dihitung. Panel kualitas data mencatat "Instagram: tidak ada". Narasi diberi tahu data IG tidak ada dan tidak boleh menyimpulkan apa pun soal sosmed. |
+| Input manual mingguan | Form total mingguan per akun (tayangan, jangkauan, interaksi, kunjungan profil, klik tautan, pengikut baru), disalin dari aplikasi/Meta Business Suite. Setiap angka berlabel "input manual". Analisa yang butuh data harian (deteksi tanggal iklan, korelasi klik vs bill harian, grafik harian) tidak dihitung: "butuh data harian". |
+| CSV harian menyusul | Saat akses pulih, file panjang bisa diunggah untuk mengisi celah. Digabung tanpa dobel (satu nilai per tanggal). Bila ada input manual untuk minggu yang sama, data harian dipakai dan selisihnya terhadap input manual ditampilkan. |
+| Export Meta Ads Manager | Tetap opsional dan terpisah dari akses akun IG. |
