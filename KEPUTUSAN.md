@@ -220,3 +220,23 @@ Pengaturan → Kampanye iklan (pengaturan tersimpan di laptop user).
 | Ekspor HTML | Satu file berisi CSS, Chart.js, data dashboard, dan script tampilan yang sama dengan aplikasi (inline). Tab, grafik, kotak Temuan, dan "Dari mana angka ini?" tetap berfungsi; tombol yang butuh server (pindah periode, unduh, tempel) tidak ada. Penutup `</script` di data/skrip diloloskan. |
 | Tes browser | `tests/test_browser.py` (Playwright + Chromium) atas `tests/fixtures/data_contoh.py` (data buatan 5 minggu dua cabang + loyalty + Instagram + pengaturan): semua tab, kedua cabang, minggu dan bulan, lebar 1280 dan 390px, halaman Upload/Riwayat/Pengaturan, alur tempel jawaban, dan file ekspor dibuka dari disk. Syarat: 0 error konsol, tanpa scroll horizontal, dialog "Dari mana angka ini?" terbuka. |
 | Laporan ESB opsional | Promotion, Customer Data, Staff Sales & Cancel, Cancel Menu Detail: **belum diolah** karena belum ada contoh file asli (aturan "jangan menebak"). Panel kualitas data menulis "belum diolah". |
+
+## Laporan khusus cabang (6 Okt 2026)
+
+Pilihan "Laporan khusus cabang ini" (`lingkup=khusus`) berlaku untuk tampilan,
+Unduh HTML, paket untuk Claude, dan narasi. Isinya hanya data cabang yang
+dipilih, dihasilkan dari dashboard lengkap lalu disaring (`app/hitung/khusus.py`),
+sehingga rumus angka yang tersisa sama persis:
+
+| Bagian | Dalam lingkup khusus |
+|---|---|
+| Membership | Total member, terverifikasi, member baru terverifikasi, dan member baru semua cabang (angka gabungan web loyalty) dikeluarkan, termasuk kolom/baris hariannya dan persentase "dari semua member". Angka cabang (member baru oleh kasir cabang, bill/omzet member, pernah transaksi di cabang, repeat) tetap. |
+| Kampanye bersama | Hanya baris cabang ini (tambahan bill, korelasi, biaya per bill tambahan dibebankan penuh). Biaya "dibagi ke semua cabang sasaran" dikeluarkan karena memakai bill cabang lain. |
+| Jendela waktu | Keterangan yang menyebut cabang lain dihapus; jendela cabang lain yang tidak punya bill di cabang ini dikeluarkan. |
+| Lain-lain | Catatan yang menyebut cabang lain, dan nama file unggahan di panel kualitas data, diganti/dikeluarkan. |
+| Narasi | Disimpan terpisah (kunci `khusus:<tab>`), dari paket khusus. |
+
+Tes `tests/test_khusus.py` dan `test_browser.py::test_ekspor_khusus_cabang_tanpa_cabang_lain`
+memeriksa kedua arah (Rungkut dan Mawar) di beberapa periode: data, paket, dan
+file ekspor tidak boleh menyebut cabang lain, menu yang hanya dijual di cabang
+lain, angka omzet cabang lain, atau kata "semua cabang"/"kedua cabang".

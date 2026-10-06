@@ -49,6 +49,8 @@ def _esb(con, tmp: Path):
             n = 6 + (t.weekday() >= 5) * 4 + (i % 3) - (cabang == "Mawar") * 2
             for j in range(n):
                 isi, promo = POLA[(i + j) % len(POLA)]
+                if cabang == "Mawar" and j == 0:  # menu yang hanya ada di Mawar (untuk tes laporan khusus cabang)
+                    isi = isi + [("Pisang Goreng Keju", 1, 23000, 7000, KUDAPAN)]
                 sn = f"{kode}{t:%m%d}{j:02d}"
                 sub = sum(q * h for _, q, h, _, _ in isi)
                 jam = f"{8 + (j * 2) % 13:02d}:{(j * 7) % 60:02d}:00" if j < n - 1 else "20:30:00"

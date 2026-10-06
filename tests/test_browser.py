@@ -165,3 +165,25 @@ def test_ekspor_html_mandiri(server, browser, lebar):
             h.page.click("#asal-tutup")
         h.cek_layout(f"ekspor tab {tab} @{lebar}px")
     h.page.close()
+
+
+def test_ekspor_khusus_cabang_tanpa_cabang_lain(server, browser):
+    url, d = server
+    h = Halaman(browser, 390)
+    h.page.goto(f"{url}/#dashboard?cabang=Rungkut&bulan=2026-09&pilih=M4&tab=sosmed&khusus=1")
+    h.tunggu_dashboard()
+    assert h.page.is_checked("#dash-khusus")
+    with h.page.expect_download() as unduh:
+        h.page.click("#dash-unduh")
+    berkas = d / "ekspor-khusus.html"
+    unduh.value.save_as(berkas)
+    h.galat.clear()
+    h.page.goto(berkas.as_uri())
+    h.page.wait_for_selector("#dash-tab button")
+    for tab in TAB:
+        h.page.click(f"#dash-tab button[data-tab={tab}]")
+        teks = h.page.inner_text("body")
+        for terlarang in ("Mawar", "semua cabang", "kedua cabang", "Pisang Goreng Keju"):
+            assert terlarang not in teks, f"tab {tab} menampilkan '{terlarang}'"
+        h.cek_layout(f"ekspor khusus tab {tab}")
+    h.page.close()

@@ -252,34 +252,39 @@ def _periode(cabang: str, bulan: str) -> tuple[int, int]:
     return tahun, b
 
 
-def _dashboard(con, cabang: str, bulan: str, pilih: str) -> dict:
+def _dashboard(con, cabang: str, bulan: str, pilih: str, lingkup: str = "lengkap") -> dict:
     tahun, b = _periode(cabang, bulan)
+    if lingkup not in ("lengkap", "khusus"):
+        raise HTTPException(400, "Lingkup harus 'lengkap' atau 'khusus'.")
     hasil = dashboard.hitung(con, cabang, tahun, b, pilih)
+    if lingkup == "khusus":
+        from app.hitung import khusus
+        hasil = khusus.terapkan(hasil)
     hasil["narasi"] = {"aktif": narasi.aktif(), "tab": narasi.status(con, hasil)}
     return hasil
 
 
 @app.get("/api/dashboard")
-def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
+def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan", lingkup: str = "lengkap"):
     with db.koneksi() as con:
-        return _dashboard(con, cabang, bulan, pilih)
+        return _dashboard(con, cabang, bulan, pilih, lingkup)
 
 
 @app.get("/api/ekspor")
-def unduh_html(cabang: str, bulan: str, pilih: str = "bulan"):
+def unduh_html(cabang: str, bulan: str, pilih: str = "bulan", lingkup: str = "lengkap"):
     """Satu file HTML mandiri berisi semua tab periode ini (lihat app/ekspor.py)."""
     from app import ekspor
     with db.koneksi() as con:
-        data = _dashboard(con, cabang, bulan, pilih)
+        data = _dashboard(con, cabang, bulan, pilih, lingkup)
     return Response(ekspor.html(data), media_type="text/html; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="{ekspor.nama_file(data)}"'})
 
 
 @app.get("/api/paket-claude")
-def unduh_paket_claude(cabang: str, bulan: str, pilih: str = "bulan"):
+def unduh_paket_claude(cabang: str, bulan: str, pilih: str = "bulan", lingkup: str = "lengkap"):
     """File Markdown berisi instruksi + angka semua tab, untuk diunggah user sendiri ke Claude (tanpa API)."""
     with db.koneksi() as con:
-        data = _dashboard(con, cabang, bulan, pilih)
+        data = _dashboard(con, cabang, bulan, pilih, lingkup)
     p = data["periode"]
     nama = f"Paket-Claude-Ampyang-{cabang}-{p['awal']}_{p['akhir']}.md"
     return Response(narasi.paket(data), media_type="text/markdown; charset=utf-8",
@@ -290,6 +295,7 @@ class PermintaanNarasi(BaseModel):
     cabang: str
     bulan: str
     pilih: str = "bulan"
+    lingkup: str = "lengkap"
     tab: str
 
 
@@ -299,7 +305,7 @@ def buat_narasi(req: PermintaanNarasi):
     if req.tab not in narasi.TAB:
         raise HTTPException(400, "Tab tidak dikenal.")
     with db.koneksi() as con:
-        data = _dashboard(con, req.cabang, req.bulan, req.pilih)
+        data = _dashboard(con, req.cabang, req.bulan, req.pilih, req.lingkup)
         try:
             return narasi.buat(con, data, req.tab)
         except narasi.NarasiGagal as e:
@@ -311,6 +317,7 @@ class PermintaanTempel(BaseModel):
     cabang: str
     bulan: str
     pilih: str = "bulan"
+    lingkup: str = "lengkap"
     teks: str
 
 
@@ -318,7 +325,7 @@ class PermintaanTempel(BaseModel):
 def tempel_narasi(req: PermintaanTempel):
     """Jawaban Claude yang ditempel user: dibaca per tab, angkanya diverifikasi, lalu disimpan."""
     with db.koneksi() as con:
-        data = _dashboard(con, req.cabang, req.bulan, req.pilih)
+        data = _dashboard(con, req.cabang, req.bulan, req.pilih, req.lingkup)
         try:
             return narasi.simpan_manual(con, data, req.teks)
         except narasi.NarasiGagal as e:

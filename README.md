@@ -149,6 +149,18 @@ kedelapan tab periode yang sedang dibuka, termasuk grafik, kotak Temuan, dan
 "Dari mana angka ini?". File itu bisa dikirim lewat WhatsApp atau email dan
 dibuka di browser mana pun, juga di HP, tanpa aplikasi dan tanpa internet.
 
+### Laporan khusus satu cabang
+
+Centang **Laporan khusus cabang ini** di dashboard sebelum menekan **Unduh
+HTML** atau **Unduh paket untuk Claude**. Isinya hanya data cabang yang
+dipilih: tanpa angka gabungan semua cabang (misalnya total member web
+loyalty) dan tanpa angka cabang lain (misalnya bagian cabang lain dari
+kampanye bersama). Narasi untuk laporan khusus dibuat dan disimpan terpisah:
+unduh paket dan tempel jawaban Claude **saat centang ini aktif**.
+
+Nama file HTML-nya sama dengan laporan biasa, jadi periksa centangnya
+sebelum mengirim.
+
 ## 7. Pengaturan
 
 Isi sekali, lalu perbarui bila ada perubahan. Perubahan langsung berlaku ke

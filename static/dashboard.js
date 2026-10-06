@@ -14,7 +14,7 @@ const TAB = [
 const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September",
   "Oktober", "November", "Desember"];
 
-const keadaan = { cabang: "Rungkut", bulan: null, pilih: "bulan", tab: "overview", data: null };
+const keadaan = { cabang: "Rungkut", bulan: null, pilih: "bulan", tab: "overview", khusus: false, data: null };
 const grafik = [];
 const asalTerdaftar = [];
 
@@ -205,7 +205,7 @@ function tabFoot(d) {
     Jendela: j.jendela, Jam: j.jam, [`Bill hari kerja (${f.hari_kerja} hari)`]: j.bill_hari_kerja,
     "Per hari kerja": j.per_hari_kerja, [`Bill akhir pekan (${f.hari_akhir_pekan} hari)`]: j.bill_akhir_pekan,
     "Per hari akhir pekan": j.per_hari_akhir_pekan, "Porsi bill": j.porsi_bill, Keterangan: j.keterangan || "-" })))}
-    <p class="catatan">Jam dari Sales In Time; batas akhir inklusif sampai menit :59. Jendela yang punya keterangan tidak dipakai untuk membandingkan antar cabang.</p></div>`;
+    <p class="catatan">Jam dari Sales In Time; batas akhir inklusif sampai menit :59. ${khusus(keadaan.data) ? "" : "Jendela yang punya keterangan tidak dipakai untuk membandingkan antar cabang."}</p></div>`;
   h += `<h2>Per hari dalam seminggu</h2><div class="kartu"><div class="grafik"><canvas id="g-hari"></canvas></div>
     ${tabel(f.per_hari.map((x) => ({ Hari: x.hari, "Hari buka": x.hari_buka, Bill: x.bill, "Rata-rata per hari": x.rata_per_hari })))}</div>`;
   h += `<h2>Per channel</h2><div class="kartu">${tabel(f.channel.map((x) => ({ Channel: x.channel, Bill: x.bill, "Per hari buka": x.per_hari, Porsi: x.porsi })))}</div>`;
@@ -462,7 +462,7 @@ function tabSosmed(d) {
   let h = "";
   const pasang = [];
   s.akun.forEach((a, i) => {
-    h += `<h2>Instagram akun ${esc(a.akun)}${a.akun === "Brand" ? " (dipakai kedua cabang)" : ""}</h2>`;
+    h += `<h2>Instagram akun ${esc(a.akun)}${a.akun === "Brand" && !khusus(d) ? " (dipakai kedua cabang)" : ""}</h2>`;
     if (!a.ada) {
       h += `<div class="kartu kosong">Tidak diketahui — data Instagram akun ${esc(a.akun)} periode ini tidak diunggah.
         Data ini opsional: unggah CSV Instagram Insights di <a href="#upload">Upload</a>, atau isi total mingguan di
@@ -532,7 +532,9 @@ document.getElementById("dash-isi").addEventListener("click", (e) => {
 const EKSPOR = window.DATA_EKSPOR || null;
 // Dugaan & saran sudah diawali "Dugaan:"/"Saran:" di teksnya, jadi tidak diberi lencana lagi.
 const LABEL_JENIS = { belum_bisa_disimpulkan: ["peringatan", "belum bisa disimpulkan"] };
-const paramPeriode = (d) => ({ cabang: d.cabang, bulan: `${d.tahun}-${String(d.bulan).padStart(2, "0")}`, pilih: d.pilih });
+const paramPeriode = (d) => ({ cabang: d.cabang, bulan: `${d.tahun}-${String(d.bulan).padStart(2, "0")}`, pilih: d.pilih,
+  lingkup: d.lingkup === "khusus" ? "khusus" : "lengkap" });
+const khusus = (d) => d.lingkup === "khusus";
 
 function panelNarasi(d, tab) {
   const n = d.narasi;
@@ -654,6 +656,7 @@ function panelKualitas(d) {
 // ---------------------------------------------------------------- muat & render
 function urlDashboard() {
   const p = new URLSearchParams({ cabang: keadaan.cabang, bulan: keadaan.bulan, pilih: keadaan.pilih, tab: keadaan.tab });
+  if (keadaan.khusus) p.set("khusus", "1");
   return `#dashboard?${p}`;
 }
 
@@ -681,6 +684,8 @@ async function bukaDashboard(query) {
     document.getElementById("dash-bulan").value;
   keadaan.pilih = p.get("pilih") || keadaan.pilih;
   keadaan.tab = p.get("tab") || keadaan.tab;
+  if (p.has("cabang")) keadaan.khusus = p.get("khusus") === "1";
+  document.getElementById("dash-khusus").checked = keadaan.khusus;
   document.getElementById("dash-cabang").value = keadaan.cabang;
   document.getElementById("dash-bulan").value = keadaan.bulan;
   await muat();
@@ -697,7 +702,7 @@ async function muat() {
   document.getElementById("dash-kualitas").innerHTML = "";
   let data;
   try {
-    data = await api(`/api/dashboard?cabang=${encodeURIComponent(keadaan.cabang)}&bulan=${encodeURIComponent(keadaan.bulan)}&pilih=${encodeURIComponent(keadaan.pilih)}`);
+    data = await api(`/api/dashboard?cabang=${encodeURIComponent(keadaan.cabang)}&bulan=${encodeURIComponent(keadaan.bulan)}&pilih=${encodeURIComponent(keadaan.pilih)}&lingkup=${keadaan.khusus ? "khusus" : "lengkap"}`);
   } catch (e) {
     if (no === nomorMuat) isi.innerHTML = `<div class="pesan galat">${esc(e.message)}</div>`;
     return;
@@ -757,6 +762,7 @@ if (EKSPOR) {
 } else {
   document.getElementById("dash-cabang").addEventListener("change", (e) => { keadaan.cabang = e.target.value; muat(); });
   document.getElementById("dash-bulan").addEventListener("change", (e) => { keadaan.bulan = e.target.value; keadaan.pilih = "bulan"; muat(); });
+  document.getElementById("dash-khusus").addEventListener("change", (e) => { keadaan.khusus = e.target.checked; muat(); });
   document.getElementById("dash-unduh").addEventListener("click", () => {
     location.href = `/api/ekspor?${new URLSearchParams(paramPeriode(keadaan.data))}`;
   });

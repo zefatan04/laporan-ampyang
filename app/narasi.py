@@ -310,7 +310,7 @@ def _simpan(con, data: dict, tab: str, m: dict, mentah: list[dict], model: str) 
     pastikan(con)
     p = data["periode"]
     con.execute("INSERT OR REPLACE INTO narasi VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [data["cabang"], p["awal"], p["akhir"], tab, versi(m), json.dumps(temuan, ensure_ascii=False),
+                [data["cabang"], p["awal"], p["akhir"], _kunci(data, tab), versi(m), json.dumps(temuan, ensure_ascii=False),
                  json.dumps(dibuang, ensure_ascii=False), model, datetime.now()])
     return temuan, dibuang
 
@@ -333,7 +333,8 @@ def paket(data: dict) -> str:
     bagian = [
         f"# Paket analisa Kedai Ampyang — {judul}",
         "",
-        "Kamu menulis temuan untuk laporan tim marketing Kedai Ampyang, kopitiam di Surabaya (cabang Rungkut dan Mawar). "
+        "Kamu menulis temuan untuk laporan tim marketing Kedai Ampyang, kopitiam di Surabaya"
+        + (f" (cabang {data['cabang']}). " if data.get("lingkup") == "khusus" else " (cabang Rungkut dan Mawar). ") +
         "Pembacanya pemilik dan tim marketing. Di bawah ada data delapan tab dashboard dalam JSON. Semua angka sudah dihitung "
         "oleh program dari export kasir (ESB), web loyalty, dan Instagram. Jangan menghitung ulang.",
         "",
@@ -406,6 +407,11 @@ def simpan_manual(con, data: dict, teks: str) -> dict:
     return {"tab": ringkas, "catatan": catatan}
 
 
+def _kunci(data: dict, tab: str) -> str:
+    """Narasi lingkup khusus cabang disimpan terpisah, supaya tidak tercampur angka di luar lingkupnya."""
+    return f"khusus:{tab}" if data.get("lingkup") == "khusus" else tab
+
+
 def status(con, data: dict) -> dict:
     """Narasi tersimpan untuk semua tab periode ini: 'ada', 'kedaluwarsa' (data berubah), atau 'belum'."""
     pastikan(con)
@@ -415,10 +421,10 @@ def status(con, data: dict) -> dict:
     simpan = {r[0]: r for r in rows}
     hasil = {}
     for tab in TAB:
-        if tab not in simpan:
+        if _kunci(data, tab) not in simpan:
             hasil[tab] = {"status": "belum"}
             continue
-        _, v, temuan, dibuang, model, waktu = simpan[tab]
+        _, v, temuan, dibuang, model, waktu = simpan[_kunci(data, tab)]
         hasil[tab] = {"status": "ada" if v == versi(muatan(data, tab)) else "kedaluwarsa",
                       "temuan": json.loads(temuan), "dibuang": json.loads(dibuang), "model": model,
                       "waktu": waktu.isoformat(timespec="minutes")}
