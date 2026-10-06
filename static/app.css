@@ -206,3 +206,10 @@ code { background: var(--abu-muda); padding: 0 .25rem; border-radius: 4px; }
 }
 .pilih-metrik button[aria-selected=true] { background: var(--terakota); border-color: var(--terakota); color: #fff; }
 p.awas { color: var(--merah); margin: .3rem 0; font-size: .9rem; }
+
+/* ---------- narasi ---------- */
+.narasi { border-left: 4px solid var(--terakota); }
+.narasi-kepala { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.narasi-kepala .tombol { margin-left: auto; }
+ul.temuan { margin: .25rem 0 .5rem; padding-left: 1.2rem; }
+ul.temuan li { margin-bottom: .45rem; }

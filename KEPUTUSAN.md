@@ -192,3 +192,20 @@ lalu 0 sepanjang 14–27 Sep; jangkauan harian ±8.000–16.500 di Agustus vs
 ±60–650 di September. Pola ini seperti iklan berbayar 18–30 Agu (30 Agu
 sebagian hari). Belum ada kampanye terdaftar untuk tanggal itu, dan data ESB
 Agustus belum diunggah, jadi tambahan bill-nya belum bisa dihitung.
+
+Konfirmasi user (6 Okt 2026): ada iklan berbayar akun Brand sekitar 18–30 Agu
+dengan anggaran **sekitar Rp1.400.000** (perkiraan user, bukan angka tagihan).
+Arti "dibagi" pada biaya per bill tambahan = anggaran ÷ Σ tambahan bill
+semua cabang sasaran: **disetujui**. Kampanye ini diisi user sendiri di
+Pengaturan → Kampanye iklan (pengaturan tersimpan di laptop user).
+
+## Narasi Claude (tahap 9, 6 Okt 2026)
+
+| Hal | Keputusan |
+|---|---|
+| Model | `claude-opus-5-5`, effort `high`, structured output (JSON: daftar temuan + jenis fakta/dugaan/belum_bisa_disimpulkan). Fallback sisi server `fallbacks: "default"` aktif: bila model utama menolak, server mengulang di model cadangan pilihan Anthropic. |
+| Yang dikirim | Hasil dashboard tab itu yang sudah dihitung Python + periode + ringkasan kualitas data. Dibuang sebelum dikirim: asal-usul angka, nama kasir (`per_kasir`, `Kasir`), alamat IP dan rincian log, jam/nominal transaksi member per baris (diganti jumlahnya), nomor bill. Tabel dipotong 40 baris; daftar semua menu tidak dikirim (top/bottom tetap). |
+| Verifikasi | Semua angka di setiap kalimat diambil (Rp, %, ribu/juta, desimal koma) dan dicocokkan ke angka di JSON yang dikirim, dengan toleransi setengah satuan digit terakhir yang ditulis (mis. "Rp51,7 juta" cocok dengan Rp51.729.896; "21,9%" tidak cocok dengan 21,6%). Kalimat dengan angka yang tidak ditemukan dibuang, dicatat di log aplikasi dan ditampilkan di bawah kotak Temuan. Badge "narasi terverifikasi" hanya untuk narasi yang data sumbernya belum berubah. |
+| Gaya | Titik koma dipecah jadi dua kalimat secara otomatis. Temuan jenis dugaan selalu diawali "Dugaan:". |
+| Simpan | Per cabang + periode + tab, beserta sidik SHA-256 muatan. Sidik beda (unggah ulang, pengaturan berubah) → "data berubah sejak narasi dibuat"; tidak dibuat ulang otomatis supaya tidak memakai kuota tanpa diminta. |
+| Tanpa key | `ANTHROPIC_API_KEY` dibaca dari `.env` di folder aplikasi. Tanpa key: "Narasi otomatis tidak aktif"; semua angka tetap tampil. Galat API (key ditolak, internet putus, batas pemakaian) tampil sebagai pesan di kotak Temuan. |

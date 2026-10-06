@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app import db, db_ig, db_loyalty
+from app import db, db_ig, db_loyalty, narasi
 from app.hitung import dashboard
 from app.parser.esb import baca_file_esb, daftar_cabang_metadata
 from app.parser.instagram import baca_file_ig, teks_ig
@@ -251,7 +251,35 @@ def lihat_dashboard(cabang: str, bulan: str, pilih: str = "bulan"):
     except ValueError as e:
         raise HTTPException(400, "Format bulan harus YYYY-MM.") from e
     with db.koneksi() as con:
-        return dashboard.hitung(con, cabang, tahun, b, pilih)
+        hasil = dashboard.hitung(con, cabang, tahun, b, pilih)
+        hasil["narasi"] = {"aktif": narasi.aktif(), "tab": narasi.status(con, hasil)}
+        return hasil
+
+
+class PermintaanNarasi(BaseModel):
+    cabang: str
+    bulan: str
+    pilih: str = "bulan"
+    tab: str
+
+
+@app.post("/api/narasi")
+def buat_narasi(req: PermintaanNarasi):
+    """Buat (ulang) narasi satu tab. Angka dihitung ulang dulu supaya narasi memakai data terbaru."""
+    if req.cabang not in ("Rungkut", "Mawar") or req.tab not in narasi.TAB:
+        raise HTTPException(400, "Cabang atau tab tidak dikenal.")
+    try:
+        tahun, b = (int(x) for x in req.bulan.split("-"))
+        date(tahun, b, 1)
+    except ValueError as e:
+        raise HTTPException(400, "Format bulan harus YYYY-MM.") from e
+    with db.koneksi() as con:
+        data = dashboard.hitung(con, req.cabang, tahun, b, req.pilih)
+        try:
+            return narasi.buat(con, data, req.tab)
+        except narasi.NarasiGagal as e:
+            # Galat yang wajar (key belum diisi, internet putus, ditolak): dikirim sebagai pesan, bukan galat server.
+            return {"galat": str(e)}
 
 
 @app.get("/api/pengaturan")

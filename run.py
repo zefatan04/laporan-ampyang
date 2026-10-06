@@ -7,7 +7,8 @@ import webbrowser
 import uvicorn
 from dotenv import load_dotenv
 
-load_dotenv()
+# .env di folder aplikasi (bukan folder kerja) berisi ANTHROPIC_API_KEY untuk narasi otomatis.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 PORT = int(os.environ.get("AMPYANG_PORT", 8000))
 
 if __name__ == "__main__":

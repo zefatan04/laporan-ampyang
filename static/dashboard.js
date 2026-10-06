@@ -527,6 +527,61 @@ document.getElementById("dash-isi").addEventListener("click", (e) => {
   grafikIg(i, keadaan.data.sosmed.akun[i].harian, b.dataset.metrik);
 });
 
+// ---------------------------------------------------------------- narasi (Claude)
+// Dugaan sudah diawali "Dugaan:" di teksnya, jadi tidak diberi lencana lagi.
+const LABEL_JENIS = { belum_bisa_disimpulkan: ["peringatan", "belum bisa disimpulkan"] };
+
+function panelNarasi(d, tab) {
+  const n = d.narasi;
+  if (!n) return "";
+  if (!n.aktif) {
+    return `<div class="kartu kosong narasi">Narasi otomatis tidak aktif. Isi <code>ANTHROPIC_API_KEY</code> di file <code>.env</code>
+      di folder aplikasi, lalu jalankan ulang aplikasi. Semua angka di bawah tetap lengkap tanpa narasi.</div>`;
+  }
+  const x = n.tab[tab];
+  if (!x) return "";
+  const tombol = `<button class="tombol" data-narasi="${esc(tab)}">${x.status === "belum" ? "Buat narasi" : "Buat ulang"}</button>`;
+  const kepala = (lencana) => `<div class="narasi-kepala"><h2 class="tanpa-jarak">Temuan</h2>${lencana}${tombol}</div>`;
+  if (x.status === "belum") {
+    return `<div class="kartu narasi">${kepala("")}
+      <p class="catatan">Belum ada narasi untuk tab ini. Narasi ditulis Claude dari angka di tab ini, lalu setiap angka di teksnya dicocokkan otomatis ke data.</p></div>`;
+  }
+  const lencana = x.status === "ada"
+    ? `<span class="lencana lulus">narasi terverifikasi</span>`
+    : `<span class="lencana peringatan">data berubah sejak narasi dibuat — buat ulang</span>`;
+  const daftar = x.temuan.length ? `<ul class="temuan">${x.temuan.map((t) => {
+    const j = LABEL_JENIS[t.jenis];
+    return `<li>${j ? `<span class="lencana ${j[0]}">${esc(j[1])}</span> ` : ""}${esc(t.teks)}</li>`;
+  }).join("")}</ul>` : `<p class="catatan">Semua kalimat narasi dibuang karena memuat angka yang tidak ada di data. Coba buat ulang.</p>`;
+  const buang = x.dibuang.length ? `<details><summary>${x.dibuang.length} kalimat dibuang karena angkanya tidak ditemukan di data</summary>
+    ${tabel(x.dibuang.map((b) => ({ Kalimat: b.kalimat, "Angka tidak ditemukan": b.angka_tidak_ditemukan.join(", ") })))}</details>` : "";
+  return `<div class="kartu narasi">${kepala(lencana)}${daftar}${buang}
+    <p class="catatan">Dibuat ${esc(x.waktu.replace("T", " "))} · ${esc(x.model)}. Setiap angka di teks sudah dicocokkan ke data tab ini;
+      kalimat yang angkanya tidak ditemukan dibuang. Label "dugaan" = kemungkinan penjelasan, bukan fakta dari data.</p></div>`;
+}
+
+document.getElementById("dash-isi").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-narasi]");
+  if (!b) return;
+  const d = keadaan.data;
+  const tab = b.dataset.narasi;
+  b.disabled = true;
+  b.textContent = "Menulis… (bisa sampai 1 menit)";
+  try {
+    const hasil = await api("/api/narasi", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cabang: d.cabang, bulan: `${d.tahun}-${String(d.bulan).padStart(2, "0")}`, pilih: d.pilih, tab }),
+    });
+    if (hasil.galat) throw new Error(hasil.galat);
+    d.narasi.tab[tab] = hasil;
+    if (keadaan.data === d) render();
+  } catch (err) {
+    b.disabled = false;
+    b.textContent = "Coba lagi";
+    b.insertAdjacentHTML("afterend", `<span class="turun">${esc(err.message)}</span>`);
+  }
+});
+
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
   const q = d.kualitas;
@@ -635,7 +690,7 @@ function render() {
     const m = d.menyusul.find((x) => x.kode === keadaan.tab);
     hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };
   }
-  document.getElementById("dash-isi").innerHTML = hasil.html;
+  document.getElementById("dash-isi").innerHTML = panelNarasi(d, keadaan.tab) + hasil.html;
   document.getElementById("dash-kualitas").innerHTML = panelKualitas(d);
   hasil.setelah();
 }

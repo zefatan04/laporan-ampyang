@@ -8,12 +8,13 @@ Prinsip utama: **angka yang salah lebih buruk daripada angka yang kosong.**
 Data yang tidak ada atau tidak cocok ditampilkan sebagai "Tidak diketahui"
 beserta alasannya.
 
-> Status: tahap 8 dari 10. Sudah bisa: upload Bill Report + COGS Report,
+> Status: tahap 9 dari 10. Sudah bisa: upload Bill Report + COGS Report,
 > CSV loyalty, dan CSV Instagram Insights; laporan validasi, simpan, riwayat
 > data; dashboard kedelapan tab (Overview Omzet, Makanan, Kudapan, Minuman,
 > Foot Traffic, Promo, Membership, Sosmed & Campaign; mingguan M1–M5 + Bulan
 > Penuh) dengan tombol "Dari mana angka ini?", panel kualitas data, dan
-> Pengaturan. Narasi otomatis dan ekspor HTML menyusul.
+> Pengaturan, plus narasi temuan otomatis (Claude) yang angkanya dicek ke
+> data. Ekspor HTML menyusul.
 
 ## Memasang (Windows)
 
@@ -51,6 +52,23 @@ total mingguan di Pengaturan → Input manual Instagram.
 
 Kampanye iklan (tanggal, cabang sasaran, anggaran, akun) diisi di
 Pengaturan → Kampanye iklan.
+
+## Narasi otomatis (opsional)
+
+Setiap tab punya kotak **Temuan**: 3–6 temuan yang ditulis Claude dari angka
+tab itu. Untuk mengaktifkan:
+
+1. Salin `.env.example` menjadi `.env` di folder aplikasi.
+2. Isi `ANTHROPIC_API_KEY=` dengan API key dari console.anthropic.com.
+3. Tutup dan jalankan ulang aplikasi.
+
+Narasi dibuat hanya saat tombol **Buat narasi** ditekan (butuh internet,
+±1 menit per tab) dan disimpan, jadi tidak dibuat ulang setiap halaman dibuka.
+Kalau data periode itu berubah, narasi ditandai "data berubah" sampai dibuat
+ulang. Setiap angka di narasi dicocokkan otomatis ke data; kalimat dengan
+angka yang tidak ada di data dibuang dan bisa dilihat di bawah kotak Temuan.
+Yang dikirim ke Claude hanya angka agregat, nama menu, dan catatan kualitas
+data: tanpa nomor WA, nama pelanggan, nama kasir, atau alamat IP.
 
 ## Mengecek file ESB lewat terminal (tanpa menyimpan)
 
