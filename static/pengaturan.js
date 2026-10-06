@@ -15,6 +15,7 @@ async function muatPengaturan() {
   document.getElementById("isi-libur-ok").checked = !!s.hari_libur_terverifikasi;
   document.getElementById("isi-target").value = Object.entries(s.target_omzet)
     .map(([k, v]) => `${k.replace("|", " ")} ${v}`).join("\n");
+  document.getElementById("isi-menu-baru").value = s.menu_baru.map((x) => `${x.nama} | ${x.mulai} | ${x.tab}`).join("\n");
   document.getElementById("isi-suhu").value = Object.entries(s.suhu_per_menu).map(([m, v]) => `${m} = ${v}`).join("\n");
   document.getElementById("isi-kategori").innerHTML = Object.entries(s.kategori).map(([k, v]) =>
     `<label>${esc(LABEL_KATEGORI[k] || k)}<input data-kat="${esc(k)}" value="${esc(v.join(", "))}"></label>`).join("");
@@ -57,6 +58,16 @@ const PENYIMPAN = {
       k[el.dataset.kat] = el.value.split(",").map((x) => x.trim()).filter(Boolean);
     });
     await kirim("kategori", k);
+  },
+  async menuBaru() {
+    const m = baris("isi-menu-baru").map((x) => {
+      const b = x.split("|").map((y) => y.trim());
+      if (b.length !== 3 || !/^\d{4}-\d{2}-\d{2}$/.test(b[1]) || !["makanan", "kudapan", "minuman"].includes(b[2])) {
+        throw new Error(`Baris tidak sesuai format "Nama | YYYY-MM-DD | tab": "${x}"`);
+      }
+      return { nama: b[0], mulai: b[1], tab: b[2] };
+    });
+    await kirim("menu_baru", m);
   },
   async suhu() {
     const s = {};

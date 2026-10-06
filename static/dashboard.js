@@ -221,6 +221,69 @@ function tabFoot(d) {
   } };
 }
 
+// ---------------------------------------------------------------- tab Makanan / Kudapan / Minuman
+const KOLOM_MENU = ["Menu", "Sub-kategori", "Qty", "Omzet (Total)", "Omzet bersih", "Harga (modus)", "Margin", "Margin %", "Catatan"];
+
+function tabelMenu(baris, kolom = KOLOM_MENU) {
+  return tabel(baris.map((r) => Object.fromEntries(kolom.map((k) => [k, r[k]]))));
+}
+
+function bagianOpsional(judul, x, isi) {
+  if (!x) return "";
+  if (!x.tersedia) return `<h2>${esc(judul)}</h2><div class="kartu kosong">Tidak diketahui — ${esc(x.alasan)}.</div>`;
+  return `<h2>${esc(judul)}</h2><div class="kartu">${isi(x)}</div>`;
+}
+
+function tabMenu(d, kode) {
+  const t = d[kode];
+  const k = t.kartu;
+  let h = `<div class="kisi-kartu">
+    ${kartuAngka(`Omzet ${t.judul.toLowerCase()}`, k.omzet, "Basis Subtotal (Total COGS), tanpa item paket Rp0")}
+    ${kartuAngka("Omzet bersih (setelah diskon)", k.omzet_bersih)}
+    ${kartuAngka("Qty terjual (berbayar)", k.qty)}
+    ${kartuAngka("Margin blended", k.margin)}
+    ${kartuAngka("Omzet tanpa data HPP", k.omzet_tanpa_hpp, "Tidak ikut margin")}
+    ${kartuAngka("Biaya bahan item gratis di paket", k.biaya_gratis)}
+    ${k.minuman_per_bill ? kartuAngka("Minuman per bill F&B (berbayar)", k.minuman_per_bill) : ""}
+  </div>`;
+  if (!t.tersedia) return { html: h, setelah: () => {} };
+  if (t.attach) {
+    h += `<h2>Attach rate</h2><div class="kisi-kartu">${t.attach.map((a) =>
+      kartuAngka(`${a.label} · berbayar`, a.berbayar,
+        a.basis != null ? `${a.bill_berbayar} dari ${a.basis} bill F&B · termasuk paket: ${a.termasuk_paket.teks}` : "")).join("")}</div>`;
+  }
+  h += bagianBanding(t.banding);
+  h += `<h2>Per sub-kategori</h2><div class="kartu">${tabel(t.sub_kategori)}</div>`;
+  if (t.suhu) {
+    h += `<h2>Panas vs dingin</h2><div class="kartu">${tabel(t.suhu)}
+      <p class="catatan">Dari kata di nama menu (panas/hot, dingin/es/ice) dan daftar per menu di Pengaturan.${
+        t.suhu_tidak_diketahui.length ? " Belum diketahui: " + esc(t.suhu_tidak_diketahui.join(", ")) + "." : ""}</p></div>`;
+  }
+  h += `<h2>10 menu teratas (omzet)</h2><div class="kartu">${tabelMenu(t.top)}</div>`;
+  if (t.bottom.length) h += `<h2>10 menu terbawah (omzet)</h2><div class="kartu">${tabelMenu(t.bottom)}</div>`;
+  h += bagianOpsional("Menu naik / turun", t.naik_turun, (x) =>
+    `<h3 class="sub-judul">Naik</h3>${x.naik.length ? tabel(x.naik) : "<p class='catatan'>Tidak ada.</p>"}
+     <h3 class="sub-judul">Turun</h3>${x.turun.length ? tabel(x.turun) : "<p class='catatan'>Tidak ada.</p>"}
+     <p class="catatan">${esc(x.catatan)}</p>`);
+  h += bagianOpsional("Perubahan harga", t.harga, (x) =>
+    `${x.baris.length ? tabel(x.baris) : "<p class='catatan'>Tidak ada perubahan harga.</p>"}<p class="catatan">${esc(x.catatan)}</p>`);
+  h += bagianOpsional("Menu baru (belum pernah terjual sebelumnya)", t.baru_hilang.baru, (x) =>
+    `${x.baris.length ? tabel(x.baris) : "<p class='catatan'>Tidak ada.</p>"}<p class="catatan">${esc(x.dasar)}.</p>`);
+  h += bagianOpsional("Menu yang hilang", t.baru_hilang.hilang, (x) =>
+    `${x.baris.length ? tabel(x.baris) : "<p class='catatan'>Tidak ada.</p>"}<p class="catatan">${esc(x.dasar)}.</p>`);
+  if (t.menu_baru_pengaturan.length) {
+    h += `<h2>Menu baru yang dipantau (dari Pengaturan)</h2><div class="kartu">${tabel(t.menu_baru_pengaturan)}
+      <p class="catatan">Penjualan sejak tanggal mulai sampai akhir periode yang sedang dilihat.</p></div>`;
+  }
+  h += `<h2>Semua menu (${t.menu.length})</h2><div class="kartu"><details><summary>Lihat tabel lengkap</summary>${tabelMenu(t.menu)}</details></div>`;
+  t.tambahan.forEach((x) => {
+    h += `<h2>${esc(x.judul)}</h2><div class="kartu"><p class="catatan" style="padding:0">Omzet ${esc(x.omzet)} · qty ${esc(x.qty)}</p>${tabelMenu(x.menu)}</div>`;
+  });
+  h += `<ul class="catatan">${t.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}
+    <li>Margin = omzet bersih − COGS, hanya baris ber-HPP dan bukan salah input resep (HPP/unit &gt; 1,5× harga).</li></ul>`;
+  return { html: h, setelah: () => {} };
+}
+
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
   const q = d.kualitas;
@@ -264,7 +327,10 @@ async function isiDaftarBulan() {
 
 async function bukaDashboard(query) {
   const p = new URLSearchParams(query || "");
+  const no = ++nomorMuat;
+  document.getElementById("dash-isi").innerHTML = `<div class="kartu kosong">Menghitung…</div>`;
   const adaBulan = await isiDaftarBulan();
+  if (no !== nomorMuat) return;
   keadaan.cabang = p.get("cabang") || keadaan.cabang;
   keadaan.bulan = p.get("bulan") || keadaan.bulan || adaBulan[adaBulan.length - 1] ||
     document.getElementById("dash-bulan").value;
@@ -275,16 +341,25 @@ async function bukaDashboard(query) {
   await muat();
 }
 
+// Pemilih bisa diklik cepat berturut-turut. Hanya jawaban permintaan
+// terakhir yang boleh tampil, supaya angka periode lama tidak menimpa yang baru.
+let nomorMuat = 0;
+
 async function muat() {
+  const no = ++nomorMuat;
   const isi = document.getElementById("dash-isi");
   isi.innerHTML = `<div class="kartu kosong">Menghitung…</div>`;
+  document.getElementById("dash-kualitas").innerHTML = "";
+  let data;
   try {
-    keadaan.data = await api(`/api/dashboard?cabang=${encodeURIComponent(keadaan.cabang)}&bulan=${encodeURIComponent(keadaan.bulan)}&pilih=${encodeURIComponent(keadaan.pilih)}`);
+    data = await api(`/api/dashboard?cabang=${encodeURIComponent(keadaan.cabang)}&bulan=${encodeURIComponent(keadaan.bulan)}&pilih=${encodeURIComponent(keadaan.pilih)}`);
   } catch (e) {
-    isi.innerHTML = `<div class="pesan galat">${esc(e.message)}</div>`;
+    if (no === nomorMuat) isi.innerHTML = `<div class="pesan galat">${esc(e.message)}</div>`;
     return;
   }
-  keadaan.pilih = keadaan.data.pilih;
+  if (no !== nomorMuat) return;
+  keadaan.data = data;
+  keadaan.pilih = data.pilih;
   render();
 }
 
@@ -309,6 +384,7 @@ function render() {
   let hasil;
   if (keadaan.tab === "overview") hasil = tabOverview(d);
   else if (keadaan.tab === "foot") hasil = tabFoot(d);
+  else if (["makanan", "kudapan", "minuman"].includes(keadaan.tab)) hasil = tabMenu(d, keadaan.tab);
   else {
     const m = d.menyusul.find((x) => x.kode === keadaan.tab);
     hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };

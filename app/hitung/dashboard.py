@@ -8,7 +8,7 @@ from decimal import Decimal
 from app import pengaturan
 from app import pengaturan_bawaan as P
 from app.angka import format_angka, format_rupiah
-from app.hitung import foot_traffic, overview
+from app.hitung import foot_traffic, menu, overview
 from app.hitung.data import DataRentang, muat
 from app.hitung.minggu import (BULAN_PANJANG, Rentang, bulan_penuh, bulan_sebelumnya, label_tanggal,
                                minggu_bulan, minggu_sebelumnya, ringkas_tanggal)
@@ -16,7 +16,6 @@ from app.hitung.nilai import bagi, jumlah
 from app.hitung.overview import tgl
 
 TAB_MENYUSUL = {
-    "makanan": ("Performa Makanan", 5), "kudapan": ("Performa Kudapan", 5), "minuman": ("Performa Minuman", 5),
     "promo": ("Performa Promo", 6), "membership": ("Progress Membership Keluarga Ampyang", 7),
     "sosmed": ("Performa Sosial Media & Campaign/Konten", 8),
 }
@@ -193,6 +192,7 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
             "target": (pengaturan.ambil(con, "target_omzet") or {}).get(f"{cabang}|{tahun}-{bulan:02d}"),
         },
         "foot_traffic": {**foot_traffic.hitung(d), "banding": foot_traffic.banding(d, dp, label_prev)},
+        **{t: menu.hitung(con, t, d, dp, label_prev) for t in ("makanan", "kudapan", "minuman")},
         "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi"))),
         "menyusul": [{"kode": k, "nama": n, "tahap": t} for k, (n, t) in TAB_MENYUSUL.items()],
         "jendela_waktu": P.JENDELA_WAKTU,

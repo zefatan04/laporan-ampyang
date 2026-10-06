@@ -85,8 +85,8 @@ def muat(con, cabang: str, awal: date, akhir: date) -> DataRentang:
     bill = bill_semua[bill_semua["sales_type"] == "Sales"].reset_index(drop=True)
 
     cogs = tambah_kelompok(cogs, pengaturan.ambil(con, "kategori"))
-    cogs["salah_input"] = tandai_salah_input_cogs(cogs).values if len(cogs) else []
-    cogs["tanpa_hpp"] = tandai_tanpa_hpp(cogs).values if len(cogs) else []
+    cogs["salah_input"] = pd.Series(tandai_salah_input_cogs(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
+    cogs["tanpa_hpp"] = pd.Series(tandai_tanpa_hpp(cogs).values if len(cogs) else [], index=cogs.index, dtype=bool)
 
     per_hari = bill.groupby("sales_date").size().to_dict() if len(bill) else {}
     tutup = [h for h in tercakup if per_hari.get(h, 0) == 0]

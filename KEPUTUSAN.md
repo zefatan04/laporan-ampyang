@@ -68,3 +68,27 @@ terpisah di rincian ukuran rombongan.
 
 Hari libur 2026 di Pengaturan adalah isi awal yang **belum diverifikasi**;
 dashboard menampilkan peringatan sampai user mencentang "sudah dicocokkan".
+
+## Tab Makanan, Kudapan, Minuman (tahap 5)
+
+- **Discount Total di COGS Report** terbukti = diskon menu + diskon bill
+  yang dialokasikan ESB ke tiap item (Rungkut M4: Rp576.700 = 118.600 +
+  458.100). Kolom Margin ESB = Total − Discount Total − COGS Total.
+- Omzet menu = Total (kotor, = basis Subtotal). Omzet bersih = Total −
+  Discount Total. **Margin = omzet bersih − COGS**, hanya baris Price > 0,
+  COGS > 0, bukan salah input.
+- **Attach rate** (definisi dipilih Claude, bisa diubah bila perlu):
+  bill yang memuat item kelompok itu ÷ **bill F&B** (bill yang memuat
+  minimal satu item makanan/minuman; bill sewa raket/mahjong saja tidak
+  dihitung). Dua versi: berbayar saja (utama) dan termasuk item paket Rp0.
+  Kudapan: dengan dan tanpa toast. Minuman: tanpa dan dengan minuman kemasan.
+- **Minuman per bill** = Σ qty minuman (BEVERAGE) ÷ bill F&B.
+- **Harga** per menu per periode = modus Price baris berbayar; bila seri,
+  diambil yang tertinggi.
+- **Menu baru** = terjual di periode ini dan tidak pernah terjual berbayar
+  di semua data tersimpan sebelumnya (cabang yang sama). **Menu hilang** =
+  terjual di periode sebelumnya, tidak di periode ini.
+- Menu baru yang dipantau bisa didaftarkan di Pengaturan (nama, tanggal
+  mulai, tab); penjualannya dihitung sejak tanggal mulai.
+- Cek silang: Σ omzet semua kelompok = Σ Subtotal Bill (Sales), selisih Rp0
+  untuk kedua cabang minggu 28 Sep – 4 Okt.

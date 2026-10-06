@@ -15,7 +15,8 @@ BAWAAN = {
     "hari_libur": [{"tanggal": t, "nama": n} for t, n in B.HARI_LIBUR],
     "ramadan": [{"awal": a, "akhir": z} for a, z in B.RAMADAN],
     "hari_libur_terverifikasi": False,
-    "target_omzet": {},  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
+    "target_omzet": {},
+    "menu_baru": [],  # [{"nama": "Tahu Walik", "mulai": "2026-09-01", "tab": "kudapan"}]  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
 }
 
 
@@ -75,6 +76,16 @@ def periksa(kunci: str, nilai):
             if s not in ("panas", "dingin"):
                 raise ValueError(f"Suhu '{s}' untuk {m} harus 'panas' atau 'dingin'.")
         return nilai or {}
+    if kunci == "menu_baru":
+        hasil = []
+        for x in nilai or []:
+            date.fromisoformat(x["mulai"])
+            if x.get("tab") not in ("makanan", "kudapan", "minuman"):
+                raise ValueError(f"Tab untuk {x.get('nama')} harus makanan, kudapan, atau minuman.")
+            if not str(x.get("nama", "")).strip():
+                raise ValueError("Nama menu baru kosong.")
+            hasil.append({"nama": str(x["nama"]).strip(), "mulai": x["mulai"], "tab": x["tab"]})
+        return hasil
     if kunci == "kategori":
         if set(nilai) != set(BAWAAN["kategori"]):
             raise ValueError("Kunci kategori tidak lengkap.")
