@@ -58,7 +58,7 @@ harus bisa berjalan tanpa data Instagram.
 | ZUPER FOOD | Kelompok sendiri, tidak dicampur makanan utama Ampyang (juga tidak dihitung porsi orang makan). |
 | JASA, AKSESORIS | Non-F&B. Tetap di Grand Total; omzetnya ditampilkan terpisah di Overview (basis Subtotal). |
 | Rata-rata bill | **F&B saja.** Bill berisi item non-F&B saja dan bill campuran dikeluarkan (Grand Total bill campuran tidak bisa dipisah tanpa estimasi); jumlahnya ditampilkan di "Dari mana angka ini?". |
-| Panas/dingin | 17 minuman tanpa kata kunci dianggap **panas** (asumsi user), bisa diubah per menu di Pengaturan. |
+| Panas/dingin | Dari 17 minuman tanpa kata kunci: jus (Jeruk, Alpukat, Jambu, Semangka, Melon) dan Soda Gembira **dingin**, 11 lainnya **panas** (asumsi user), bisa diubah per menu di Pengaturan. |
 | Akun Instagram | CSV di folder `Sosmed` = akun **Brand**. |
 
 Temuan tambahan dari data: anak paket WFA (Rp0) berisi kudapan + minuman,

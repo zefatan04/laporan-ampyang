@@ -57,14 +57,16 @@ NAMA_KELOMPOK = {
 # Panas/dingin dari nama menu (regex, tanpa membedakan huruf besar-kecil).
 SUHU_KATA_PANAS = r"\b(panas|hot)\b"
 SUHU_KATA_DINGIN = r"\b(dingin|ice|iced|es)\b"
-# Minuman tanpa kata kunci. Keputusan 6 Okt 2026: semuanya dianggap panas
-# (asumsi user, bisa diubah per menu di Pengaturan).
-SUHU_PER_MENU = {n: "panas" for n in [
-    "Juice Jeruk", "Juice Alpukat", "Juice Jambu", "Juice Semangka", "Juice Melon",
-    "NATA DE ALEOVERA", "Kencur Mix Berry", "Soda Gembira", "ALANG TIMUN", "Wedang Jahe",
-    "KUNYIT ASAM LYCHEE", "Kopi Jahe", "ROSELLA GINGER LIME", "KULIT MANGGIS MIX TELANG TEA",
-    "Kopi Butter", "Kopi Ampyang", "Susu Ampyang (Susu + Jahe)",
-]}
+# Minuman tanpa kata kunci (keputusan 6 Okt 2026): jus dan Soda Gembira
+# dingin, sisanya panas. Asumsi user, bisa diubah per menu di Pengaturan.
+SUHU_PER_MENU = {
+    **{n: "dingin" for n in ["Juice Jeruk", "Juice Alpukat", "Juice Jambu", "Juice Semangka",
+                             "Juice Melon", "Soda Gembira"]},
+    **{n: "panas" for n in ["NATA DE ALEOVERA", "Kencur Mix Berry", "ALANG TIMUN", "Wedang Jahe",
+                            "KUNYIT ASAM LYCHEE", "Kopi Jahe", "ROSELLA GINGER LIME",
+                            "KULIT MANGGIS MIX TELANG TEA", "Kopi Butter", "Kopi Ampyang",
+                            "Susu Ampyang (Susu + Jahe)"]},
+}
 
 # Jendela waktu dari Sales In Time; jam akhir inklusif sampai :59.
 # `berlaku` = keterangan kapan jendela itu bisa terisi; jendela dengan

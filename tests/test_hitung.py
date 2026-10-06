@@ -108,7 +108,9 @@ def test_suhu():
     assert suhu("Teh Tarik Dingin", SUHU_PER_MENU) == "dingin"
     assert suhu("Kopi O Panas", SUHU_PER_MENU) == "panas"
     assert suhu("Es Kopi Susu", SUHU_PER_MENU) == "dingin"
-    assert suhu("Juice Jeruk", SUHU_PER_MENU) == "panas"   # keputusan user 6 Okt 2026
+    assert suhu("Juice Jeruk", SUHU_PER_MENU) == "dingin"  # keputusan user 6 Okt 2026
+    assert suhu("Soda Gembira", SUHU_PER_MENU) == "dingin"
+    assert suhu("Wedang Jahe", SUHU_PER_MENU) == "panas"
     assert suhu("Lemon Tea", SUHU_PER_MENU) == "tidak_diketahui"
 
 
