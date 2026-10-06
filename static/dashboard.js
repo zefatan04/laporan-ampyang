@@ -183,6 +183,11 @@ function tabOverview(d) {
       Channel: x.channel, Bill: x.bill, "Grand Total": x.grand_total.teks, "Porsi omzet": x.porsi_omzet.teks,
       "Rata-rata bill F&B": x.rata_bill_fnb.teks })))}</div>`;
   }
+  h += bagianEsb("Metode pembayaran", o.metode_bayar, (x) => tabel(x.baris));
+  h += bagianEsb("Penjualan per staf", o.staf, (x) => tabel(x.baris));
+  h += bagianEsb("Pembatalan & void", o.pembatalan, (x) => (x.baris.length
+    ? `${tabel(x.ringkas)}<details><summary>Rincian ${x.baris.length} item</summary>${tabel(x.baris)}</details>`
+    : "<p class='catatan'>Tidak ada item yang dibatalkan atau di-void.</p>"));
   return { html: h, setelah: () => d.periode.ada_data && grafikBatang("g-omzet", "Grand Total", titik, (t) => (t.grand_total == null ? null : Number(t.grand_total)), rp) };
 }
 
@@ -226,6 +231,12 @@ const KOLOM_MENU = ["Menu", "Sub-kategori", "Qty", "Omzet (Total)", "Omzet bersi
 
 function tabelMenu(baris, kolom = KOLOM_MENU) {
   return tabel(baris.map((r) => Object.fromEntries(kolom.map((k) => [k, r[k]]))));
+}
+
+// Bagian dari laporan ESB opsional: cakupan hari dan catatan sumber selalu ditampilkan.
+function bagianEsb(judul, x, isi) {
+  return bagianOpsional(judul, x, (y) => `${y.cakupan ? `<p class="catatan" style="padding:0"><b>Cakupan:</b> ${esc(y.cakupan)}.</p>` : ""}
+    ${isi(y)}<ul class="catatan">${(y.catatan || []).map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`);
 }
 
 function bagianOpsional(judul, x, isi) {
@@ -333,6 +344,8 @@ function tabPromo(d) {
       <p class="catatan">Bill tanpa promo: ${p.esb.tanpa_promo.bill}, rata-rata bill F&amp;B ${esc(p.esb.tanpa_promo.rata_bill_fnb)}.</p>
       <ul class="catatan">${p.esb.catatan.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
   }
+  h += bagianEsb("Rincian per promo (Promotion Report ESB)", p.rincian_esb, (x) => (x.baris.length
+    ? tabel(x.baris) : "<p class='catatan'>Tidak ada promo tercatat di Promotion Report pada periode ini.</p>"));
   h += `<h2>Paket</h2>`;
   const pk = p.paket;
   if (!pk.tersedia) h += `<div class="kartu kosong">Tidak diketahui — ${esc(pk.alasan)}.</div>`;
@@ -353,8 +366,10 @@ function tabPromo(d) {
 // ---------------------------------------------------------------- tab Membership
 function tabMembership(d) {
   const m = d.membership;
+  const esbPelanggan = bagianEsb("Data pelanggan ESB ORDER (Customer Data Report)", m.customer_data_esb,
+    (x) => tabel(x.kartu));
   if (!m.tersedia) {
-    return { html: `<div class="kartu kosong">Tidak diketahui — ${esc(m.alasan)}. Unggah CSV ekspor web loyalty di <a href="#upload">Upload</a>.</div>`, setelah: () => {} };
+    return { html: `<div class="kartu kosong">Tidak diketahui — ${esc(m.alasan)}. Unggah CSV ekspor web loyalty di <a href="#upload">Upload</a>.</div>${esbPelanggan}`, setelah: () => {} };
   }
   const k = m.kartu;
   let h = `<h2>Member (potret Rekap Pelanggan)</h2><div class="kisi-kartu">
@@ -364,7 +379,7 @@ function tabMembership(d) {
     ${kartuAngka(`Pernah transaksi di ${d.cabang}`, k.pernah_transaksi)}
     ${kartuAngka("Repeat sejak bergabung (≥2 transaksi)", k.repeat_sejak_gabung)}
   </div>`;
-  if (!m.berkala) return { html: h + `<div class="kartu kosong">Data loyalty berkala (transaksi, rekap harian, klaim, log) belum ada untuk periode ini.</div>`, setelah: () => {} };
+  if (!m.berkala) return { html: h + `<div class="kartu kosong">Data loyalty berkala (transaksi, rekap harian, klaim, log) belum ada untuk periode ini.</div>${esbPelanggan}`, setelah: () => {} };
   h += `<h2>Periode ini</h2><div class="kisi-kartu">
     ${kartuAngka("Member baru (semua cabang)", k.member_baru)}
     ${kartuAngka("Member baru didaftarkan kasir cabang ini", k.member_baru_cabang)}
@@ -403,7 +418,7 @@ function tabMembership(d) {
   h += `<h2>Klaim hadiah &amp; promo eksklusif</h2><div class="kartu">${m.hadiah.length ? tabel(m.hadiah) : "<p class='catatan'>Tidak ada klaim hadiah.</p>"}
     <p class="catatan">Promo eksklusif member (dari Log Aktivitas): ${m.eksklusif.klaim} klaim, ${m.eksklusif.diserahkan} diserahkan.</p></div>`;
   h += `<h2>Harian</h2><div class="kartu">${tabel(m.harian)}</div>`;
-  h += `<h2>Customer Data Report ESB</h2><div class="kartu kosong">${esc(m.customer_data_esb.alasan)}</div>`;
+  h += esbPelanggan;
   h += `<ul class="catatan"><li>Nomor WA tidak disimpan di aplikasi ini; yang disimpan hanya sidik (hash) untuk menghitung member berulang.</li>
     <li>Nominal Bill di web loyalty terbukti memakai basis Grand Total ESB.</li></ul>`;
   return { html: h, setelah: () => {} };
@@ -645,6 +660,7 @@ function panelKualitas(d) {
     ${ul([
       ...q.baris_dikeluarkan.map((b) => `${esc(b.hal)}: <b>${b.jumlah}</b>`),
       `Menu tanpa data HPP: <b>${q.tanpa_hpp.menu}</b> menu, ${q.tanpa_hpp.baris} baris, omzet ${esc(q.tanpa_hpp.omzet)} (tidak ikut margin)`,
+      ...(q.bill_nol ? [`Bill dengan Grand Total Rp0: <b>${q.bill_nol}</b> (tetap dihitung sebagai bill dan ikut rata-rata bill)`] : []),
       q.kategori_belum_dipetakan.length ? `Kategori belum dipetakan: ${esc(q.kategori_belum_dipetakan.join("; "))}` : "Semua kategori menu sudah dipetakan.",
       q.hari_libur_terverifikasi ? "Daftar hari libur sudah diverifikasi." :
         "<b>Daftar hari libur 2026 masih isi awal dan belum diverifikasi</b> dengan SKB 3 Menteri (lihat Pengaturan).",

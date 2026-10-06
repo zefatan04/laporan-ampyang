@@ -9,7 +9,7 @@ from app import pengaturan
 from app import pengaturan_bawaan as P
 from app.angka import format_angka, format_rupiah
 from app import db_ig
-from app.hitung import foot_traffic, membership, menu, overview, promo, sosmed
+from app.hitung import esb_opsional, foot_traffic, membership, menu, overview, promo, sosmed
 from app.hitung.data import DataRentang, muat
 from app.hitung.minggu import (BULAN_PANJANG, Rentang, bulan_penuh, bulan_sebelumnya, label_tanggal,
                                minggu_bulan, minggu_sebelumnya, ringkas_tanggal)
@@ -102,8 +102,7 @@ def _kualitas(con, d: DataRentang, libur_ok: bool, senin_periode: list[date]) ->
     file = [
         {"file": "Bill Report (wajib)", "status": "ada" if cakup("bill") else "tidak ada", "keterangan": f"{cakup('bill')}/{len(d.hari)} hari"},
         {"file": "Sales Menu COGS Report (wajib)", "status": "ada" if cakup("cogs") else "tidak ada", "keterangan": f"{cakup('cogs')}/{len(d.hari)} hari"},
-    ] + [{"file": f, "status": "belum diolah", "keterangan": "opsional; aplikasi belum bisa membaca laporan ini (butuh satu contoh file dari ESB). Untuk sekarang tidak perlu diunggah."} for f in (
-        "Promotion Report", "Customer Data Report", "Staff Sales & Cancel Report", "Cancel Menu Detail Report")]
+    ] + esb_opsional.kualitas(con, d)
     from app.hitung.membership import muat_loyalty
     L = muat_loyalty(con, d.cabang, d.awal, d.akhir)
     file.insert(2, {"file": "Data loyalty Keluarga Ampyang (CSV)", "status": "ada" if L.ada_data else "tidak ada",
@@ -138,6 +137,8 @@ def _kualitas(con, d: DataRentang, libur_ok: bool, senin_periode: list[date]) ->
                       "omzet": format_rupiah(jumlah(tanpa["total"])),
                       "daftar": sorted(tanpa["menu_bersih"].unique().tolist())},
         "kategori_belum_dipetakan": belum,
+        # Bill Rp0 tetap dihitung sebagai bill (belum ada keputusan); ditampilkan supaya terlihat.
+        "bill_nol": int((d.bill["grand_total"] == 0).sum()) if len(d.bill) else 0,
         "hari_libur_terverifikasi": libur_ok,
     }
 
@@ -196,11 +197,14 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
             "banding": overview.banding(d, rc, dp, rp, label_prev),
             "bulanan": _tabel_bulanan(con, cabang, tahun, bulan, minggu, d) if pilih == "bulan" else None,
             "target": (pengaturan.ambil(con, "target_omzet") or {}).get(f"{cabang}|{tahun}-{bulan:02d}"),
+            "metode_bayar": esb_opsional.metode_bayar(con, d),
+            "staf": esb_opsional.staf(con, d),
+            "pembatalan": esb_opsional.pembatalan(con, d),
         },
         "foot_traffic": {**foot_traffic.hitung(d), "banding": foot_traffic.banding(d, dp, label_prev)},
         **{t: menu.hitung(con, t, d, dp, label_prev) for t in ("makanan", "kudapan", "minuman")},
-        "promo": promo.hitung(con, d),
-        "membership": membership.hitung(con, d, dp, label_prev),
+        "promo": {**promo.hitung(con, d), "rincian_esb": esb_opsional.rincian_promo(con, d)},
+        "membership": {**membership.hitung(con, d, dp, label_prev), "customer_data_esb": esb_opsional.pelanggan_esb(con, d)},
         "sosmed": sosmed.hitung(con, d, senin_periode, (prev_r.awal, prev_r.akhir, senin_prev), label_prev, libur),
         "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi")), senin_periode),
         "jendela_waktu": P.JENDELA_WAKTU,

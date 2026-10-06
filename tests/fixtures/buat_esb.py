@@ -35,7 +35,8 @@ def rp_id(n) -> str:
 
 
 def _tulis(path: Path, judul: str, kolom: list[str], baris: list[dict], footer: dict | None,
-           cabang, awal: date, akhir: date, baris_header: int = 13) -> Path:
+           cabang, awal: date, akhir: date, baris_header: int = 13, sales_type: str = "Sales, Non Sales",
+           label_bawah: list[tuple[str, str]] | None = None) -> Path:
     wb = openpyxl.Workbook()
     ws = wb.active
     daftar = [cabang] if isinstance(cabang, str) else list(cabang)
@@ -46,7 +47,7 @@ def _tulis(path: Path, judul: str, kolom: list[str], baris: list[dict], footer: 
         ["Generated", "06-10-2026 11:10:35"],
         ["Period", f"{awal:%d-%m-%Y} - {akhir:%d-%m-%Y}"],
         ["Branch", ", ".join(f"Kedai Ampyang - {c}" for c in daftar)],
-        ["Sales Type", "Sales, Non Sales"],
+        ["Sales Type", sales_type],
         ["Company", "KEDAI AMPYANG"],
     ]
     for i, r in enumerate(meta, start=1):
@@ -65,6 +66,10 @@ def _tulis(path: Path, judul: str, kolom: list[str], baris: list[dict], footer: 
         for j, k in enumerate(kolom, start=1):
             if k in footer:
                 ws.cell(n, j, rp_id(footer[k]))
+    for label, nilai in label_bawah or []:  # baris berlabel (Recap Detail): label di kolom Menu, nilai di kolom terakhir
+        n += 1
+        ws.cell(n, kolom.index("Menu") + 1, label)
+        ws.cell(n, len(kolom), nilai)
     wb.save(path)
     return path
 

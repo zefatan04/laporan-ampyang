@@ -219,7 +219,7 @@ Pengaturan → Kampanye iklan (pengaturan tersimpan di laptop user).
 | Saran | Jenis baru "saran" (usulan tindakan + argumen dari angka). Saran tidak boleh memuat angka baru; kalimat dengan target/persentase karangan dibuang oleh verifikasi. Teks dugaan dan saran selalu diawali "Dugaan:"/"Saran:". |
 | Ekspor HTML | Satu file berisi CSS, Chart.js, data dashboard, dan script tampilan yang sama dengan aplikasi (inline). Tab, grafik, kotak Temuan, dan "Dari mana angka ini?" tetap berfungsi; tombol yang butuh server (pindah periode, unduh, tempel) tidak ada. Penutup `</script` di data/skrip diloloskan. |
 | Tes browser | `tests/test_browser.py` (Playwright + Chromium) atas `tests/fixtures/data_contoh.py` (data buatan 5 minggu dua cabang + loyalty + Instagram + pengaturan): semua tab, kedua cabang, minggu dan bulan, lebar 1280 dan 390px, halaman Upload/Riwayat/Pengaturan, alur tempel jawaban, dan file ekspor dibuka dari disk. Syarat: 0 error konsol, tanpa scroll horizontal, dialog "Dari mana angka ini?" terbuka. |
-| Laporan ESB opsional | Promotion, Customer Data, Staff Sales & Cancel, Cancel Menu Detail: **belum diolah** karena belum ada contoh file asli (aturan "jangan menebak"). Panel kualitas data menulis "belum diolah — tidak perlu diunggah". Pengenal jenisnya (nama kolom) masih perkiraan dari spesifikasi: file yang cocok dilewati, file yang tidak cocok ditolak sebagai "tidak dikenali" dan memblokir simpan. |
+| Laporan ESB opsional | Diolah sejak contoh asli dikirim (lihat bagian "Laporan ESB opsional" di bawah). |
 
 ## Laporan khusus cabang (6 Okt 2026)
 
@@ -240,3 +240,29 @@ Tes `tests/test_khusus.py` dan `test_browser.py::test_ekspor_khusus_cabang_tanpa
 memeriksa kedua arah (Rungkut dan Mawar) di beberapa periode: data, paket, dan
 file ekspor tidak boleh menyebut cabang lain, menu yang hanya dijual di cabang
 lain, angka omzet cabang lain, atau kata "semua cabang"/"kedua cabang".
+
+## Laporan ESB opsional (6 Okt 2026, dari export asli 28 Sep – 4 Okt)
+
+Diunggah bersama Bill + COGS (periode sama). Setiap laporan dicocokkan per
+cabang; hanya cabang yang cocok yang disimpan (`app/validasi_opsional.py`).
+Laporan opsional tidak pernah menghalangi Bill + COGS (file rusak/tidak cocok
+= peringatan, datanya saja yang tidak disimpan). Unduhan yang memuat data
+pribadi tidak pernah dicetak isinya ke pesan validasi.
+
+| Laporan | Struktur terbukti | Cek silang (cocok persis di file asli) | Dipakai |
+|---|---|---|---|
+| Sales Recapitulation Detail | header baris 11, per item; baris berlabel di bawah (Rounding Total = 23 di Rungkut) | Σ Subtotal per cabang & tanggal = Bill; bill sama; 1 metode bayar per bill | Metode pembayaran (Overview). Kombinasi bayar ditulis "Kombinasi: A + B" tanpa nominal. |
+| Promotion Report | header 13, footer Qty/Discount Total/Voucher Discount/Bill Total | footer = Σ baris; per bill Σ diskon = diskon menu + bill + voucher Bill Report; semua bill berpromo ada | Rincian per promo (Promo), termasuk menu yang didiskon dan pembagian diskon bill yang memakai >1 promo. Nama diskon bill diberi akhiran "(BILL DISCOUNT)" oleh ESB. |
+| Staff Sales & Cancel | header 12, tanpa footer, tanpa tanggal; baris sales dan cancel per staf terpisah | Σ Sales Total = Σ Subtotal Bill; Σ Sales Qty = Σ Qty COGS (Sales) | Penjualan per staf (Overview). **User = Waiter (penginput pesanan)**, terbukti sama dengan Σ Subtotal per Waiter di Recap Detail; bukan kasir. User "-" = ESB ORDER (Rp10.039.500 = bill ESB ORDER). "Remove" ditampilkan apa adanya (artinya belum dikonfirmasi). Tanpa tanggal: hanya dipakai bila periode export ada di dalam periode dashboard. |
+| Cancel Menu Detail | header 12, tanpa footer | Σ cancel/void per staf = Staff Report | Daftar pembatalan (Overview). Item batal tidak ada di Bill/COGS. Catatan pembatalan ditampilkan di aplikasi, tidak dikirim ke Claude. |
+| Customer Data | header 10, tanpa cabang, **tidak mengikuti Period** (berisi Agu 2025 – Okt 2026, 5.577 baris); kolom selalu terisi hanya Sales Type | hanya baris yang Sales Number-nya ada di Bill Report unggahan (103 = semua bill ESB ORDER Rungkut) | Data pelanggan ESB ORDER (Membership), terpisah dari loyalty; nama & email tidak dibaca, telepon → sidik; jumlah nomor yang juga member loyalty dihitung dari sidik yang sama. |
+
+Temuan export asli:
+- Promotion Report contoh memuat metadata Branch "Rungkut, **Wiyung**" (tanpa
+  Mawar): 5 bill Mawar berpromo tidak ada → Mawar tidak disimpan. Customer Data
+  memuat 189 Sales Number berawalan SKAN (bukan Rungkut SKAR / Mawar SKAM).
+  Cabang di luar Rungkut/Mawar diabaikan. **Pertanyaan terbuka: apa Wiyung/SKAN?**
+- 14 bill Rungkut Grand Total Rp0 (isi hanya kemasan Rp0, dibayar "CASH")
+  ikut dihitung sebagai bill (jumlah bill 518 vs 504; rata-rata bill F&B
+  Rp99.865 vs Rp102.639). **Pertanyaan terbuka: dikeluarkan atau tidak?**
+  Sementara ditampilkan di panel kualitas data.

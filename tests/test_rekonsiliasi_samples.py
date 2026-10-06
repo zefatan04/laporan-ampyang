@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.parser.esb import BILL, COGS, baca_file_esb
+from app.parser.esb import BILL, COGS, OPSIONAL, PROMOTION, baca_file_esb
 from app.validasi import LULUS, cek_footer, cek_silang
 
 SAMPLES = Path(__file__).resolve().parent.parent / "samples"
@@ -36,16 +36,15 @@ def pasangan(hasil):
 @pytest.mark.parametrize("f", FILES, ids=lambda f: f"{f.parent.name}/{f.name}")
 def test_file_terbaca_tanpa_galat(hasil, f):
     h = hasil[f]
-    if h.jenis not in (BILL, COGS):
-        pytest.skip(f"{h.jenis.nama if h.jenis else 'tidak dikenali'}: belum diolah di tahap ini")
+    assert h.jenis in (BILL, COGS, *OPSIONAL), "jenis laporan tidak dikenali"
     assert h.galat == [], [c.pesan for c in h.galat]
 
 
 @pytest.mark.parametrize("f", FILES, ids=lambda f: f"{f.parent.name}/{f.name}")
 def test_total_sama_persis_dengan_footer(hasil, f):
     h = hasil[f]
-    if h.jenis is not BILL or not h.bisa_dipakai:
-        pytest.skip("hanya Bill Report yang punya footer")
+    if h.jenis not in (BILL, PROMOTION) or not h.bisa_dipakai:
+        pytest.skip(f"{h.jenis.nama}: tidak punya footer total; dicek silang dengan Bill/COGS")
     c = cek_footer(h)
     assert c.status == LULUS, c.rincian
 

@@ -18,6 +18,10 @@ samples/
 
 Nama file bebas: jenis laporan dikenali dari isinya.
 
+Laporan ESB opsional (Promotion, Sales Recapitulation Detail, Staff Sales &
+Cancel, Cancel Menu Detail, Customer Data) contoh 28 Sep – 4 Okt ada di
+`samples/esb-opsional/`; tesnya `tests/test_esb_opsional.py::test_sampel_asli_cocok_dengan_bill_cogs`.
+
 CSV Instagram Insights disimpan per akun di `samples/instagram/<akun>/`
 (mis. `samples/instagram/brand/Tayangan Sep 4.csv`).
 

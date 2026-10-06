@@ -57,6 +57,7 @@ class NarasiGagal(Exception):
 # Kunci yang tidak pernah dikirim: asal-usul (panjang, tidak perlu untuk
 # narasi), data orang (kasir, IP), dan rincian per baris transaksi.
 _BUANG = {"asal", "IP", "Kasir", "per_kasir", "rincian", "bill_selisih", "Waktu", "Jam", "menu",
+          "Staf pencatat pesanan", "Dipesan oleh", "Dibatalkan oleh", "Catatan pembatalan",
           "jendela_waktu", "tombol", "menyusul", "harian_alasan"}
 _HITUNG_SAJA = {"tanpa_esb", "ganda"}  # daftar baris diganti jumlahnya
 

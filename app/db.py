@@ -21,6 +21,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 import pyarrow as pa
 
 from app.parser.esb import BILL, COGS, HasilBaca
@@ -47,6 +48,25 @@ KOLOM_COGS = [
     ("qty", DESIMAL), ("price", DESIMAL), ("total", DESIMAL), ("discount_total", DESIMAL),
     ("cogs_total", DESIMAL), ("cogs_total_pct", DESIMAL), ("margin", DESIMAL),
 ]
+
+# Laporan ESB opsional (lihat app/validasi_opsional.py). Hanya data cabang yang lolos cek silang.
+KOLOM_OPSIONAL = {
+    "promotion": ("esb_promo", [("sales_date", "DATE"), ("sales_number", "VARCHAR"), ("promotion_type", "VARCHAR"),
+                                ("promotion_name", "VARCHAR"), ("menu", "VARCHAR"), ("qty", DESIMAL),
+                                ("discount_total", DESIMAL), ("voucher_discount", DESIMAL)]),
+    "recap_detail": ("esb_bayar", [("sales_date", "DATE"), ("sales_number", "VARCHAR"), ("payment_method", "VARCHAR"),
+                                   ("order_mode", "VARCHAR")]),
+    "staff": ("esb_staf", [("staf", "VARCHAR"), ("sales_qty", DESIMAL), ("sales_total", DESIMAL), ("cancel_qty", DESIMAL),
+                           ("cancel_total", DESIMAL), ("void_qty", DESIMAL), ("void_total", DESIMAL),
+                           ("remove_qty", DESIMAL), ("remove_total", DESIMAL)]),
+    "cancel": ("esb_batal", [("tanggal", "DATE"), ("sales_number", "VARCHAR"), ("menu", "VARCHAR"), ("menu_category", "VARCHAR"),
+                             ("menu_category_detail", "VARCHAR"), ("dipesan_oleh", "VARCHAR"), ("waktu_pesan", "TIMESTAMP"),
+                             ("dibatalkan_oleh", "VARCHAR"), ("waktu_batal", "TIMESTAMP"), ("jenis_batal", "VARCHAR"),
+                             ("catatan", "VARCHAR"), ("qty", DESIMAL), ("subtotal", DESIMAL), ("total", DESIMAL)]),
+    # telp = sidik nomor telepon (hash), bukan nomor asli.
+    "customer": ("esb_pelanggan", [("sales_date", "DATE"), ("sales_number", "VARCHAR"), ("telp", "VARCHAR"),
+                                   ("sales_type", "VARCHAR")]),
+}
 
 SKEMA = f"""
 CREATE SEQUENCE IF NOT EXISTS seq_unggahan START 1;
@@ -80,7 +100,15 @@ CREATE TABLE IF NOT EXISTS esb_cogs (
     unggahan_id INTEGER NOT NULL, cabang VARCHAR NOT NULL, baris_excel INTEGER NOT NULL,
     {", ".join(f"{k} {t}" for k, t in KOLOM_COGS)}
 );
-"""
+-- Laporan opsional mana yang tersimpan untuk unggahan + cabang (juga bila isinya 0 baris).
+CREATE TABLE IF NOT EXISTS esb_opsional (
+    unggahan_id INTEGER NOT NULL, cabang VARCHAR NOT NULL, jenis VARCHAR NOT NULL,
+    awal DATE NOT NULL, akhir DATE NOT NULL, nama_file VARCHAR NOT NULL
+);
+""" + "\n".join(
+    f"CREATE TABLE IF NOT EXISTS {t} (unggahan_id INTEGER NOT NULL, cabang VARCHAR NOT NULL, baris_excel INTEGER NOT NULL, "
+    + ", ".join(f"{k} {ty}" for k, ty in kol) + ");"
+    for t, kol in KOLOM_OPSIONAL.values())
 
 
 def lokasi_db() -> Path:
@@ -115,6 +143,9 @@ def _tabel_arrow(df, kolom: list[tuple[str, str]], unggahan_id: int) -> pa.Table
             data[k] = pa.array([None if v is None else Decimal(v) for v in nilai], pa.decimal128(18, 6))
         elif t == "DATE":
             data[k] = pa.array(nilai, pa.date32())
+        elif t == "TIMESTAMP":
+            data[k] = pa.array([None if v is None or pd.isna(v) else pd.Timestamp(v).to_pydatetime() for v in nilai],
+                               pa.timestamp("us"))
         else:
             data[k] = pa.array([None if v is None else str(v) for v in nilai], pa.string())
     return pa.table(data)
@@ -164,6 +195,20 @@ def simpan_unggahan(con, files: list[HasilBaca], laporan: LaporanValidasi, awal:
             con.execute(f"INSERT INTO {tabel} SELECT * FROM _baru")
             con.unregister("_baru")
 
+        ops = laporan.opsional
+        if ops is not None:
+            nama = {h.jenis.kode: h.nama_file for h in files if h.jenis is not None}
+            for kode, per_cabang in ops.simpan.items():
+                tabel, kolom = KOLOM_OPSIONAL[kode]
+                for c, df in per_cabang.items():
+                    if c not in cabang:
+                        continue
+                    con.execute("INSERT INTO esb_opsional VALUES (?, ?, ?, ?, ?, ?)", [uid, c, kode, awal, akhir, nama.get(kode, "")])
+                    if len(df):
+                        con.register("_baru", _tabel_arrow(df, kolom, uid))
+                        con.execute(f"INSERT INTO {tabel} SELECT * FROM _baru")
+                        con.unregister("_baru")
+
         gagal_rekon = laporan.butuh_konfirmasi
         semua = [awal + timedelta(days=i) for i in range((akhir - awal).days + 1)]
         for c in sorted(cabang):
@@ -185,7 +230,7 @@ def simpan_unggahan(con, files: list[HasilBaca], laporan: LaporanValidasi, awal:
 
 
 def _hapus(con, unggahan_id: int, cabang: str):
-    for t in ("esb_bill", "esb_cogs", "periode"):
+    for t in ("esb_bill", "esb_cogs", "periode", "esb_opsional", *(t for t, _ in KOLOM_OPSIONAL.values())):
         con.execute(f"DELETE FROM {t} WHERE unggahan_id = ? AND cabang = ?", [unggahan_id, cabang])
     sisa = con.execute("SELECT count(*) FROM periode WHERE unggahan_id = ?", [unggahan_id]).fetchone()[0]
     if sisa == 0:

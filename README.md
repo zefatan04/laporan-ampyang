@@ -55,6 +55,19 @@ Untuk periode Senin–Minggu yang sama persis, unduh dua laporan dalam format
 Ambil export **setelah kedai tutup** hari Minggu. Export yang diambil siang
 hari membuat hari terakhir terhitung "parsial".
 
+Laporan ESB **opsional**: unggah bersama Bill dan COGS minggu yang sama
+(periode sama persis, pilih Rungkut **dan** Mawar). Masing-masing dicocokkan
+dengan Bill/COGS. Kalau cocok, datanya dipakai. Kalau tidak cocok, file itu
+saja yang tidak disimpan, sedangkan Bill dan COGS tetap tersimpan.
+
+| Laporan | Pengaturan | Dipakai untuk |
+|---|---|---|
+| Sales Recapitulation Detail Report | Sales Type: Sales, Non Sales | Metode pembayaran (tab Overview) |
+| Promotion Report | Promotion Filter: Detail Bill, Promotion Type: All | Diskon per promo dan menu yang didiskon (tab Promo) |
+| Staff Sales & Cancel Report | Sales Type: **Sales**, Status: all | Penjualan dan pembatalan per staf (tab Overview) |
+| Cancel Menu Detail Report | Type: Cancel / Void, Status: all | Daftar item yang dibatalkan beserta alasannya (tab Overview) |
+| Customer Data Report | Sales Mode: Data Customer | Pelanggan ESB ORDER (tab Membership). Nama dan email tidak dibaca; nomor telepon disimpan sebagai sidik. |
+
 ### b. Export dari web loyalty (disarankan)
 
 Di panel pemilik web loyalty, halaman Ekspor, untuk **setiap cabang**:

@@ -38,6 +38,8 @@ class Cek:
 @dataclass
 class LaporanValidasi:
     cek: list[Cek]
+    # Hasil validasi laporan opsional (app.validasi_opsional.HasilOpsional): data yang boleh disimpan.
+    opsional: object = None
 
     @property
     def butuh_konfirmasi(self) -> bool:
@@ -66,9 +68,10 @@ def cek_terbaca(h: HasilBaca) -> Cek:
     rincian = [{"Baris": c.baris or "-", "Catatan": c.pesan} for c in h.peringatan]
     n = 0 if h.data is None else len(h.data)
     per_cabang = ""
-    if h.data is not None and len(h.data):
+    if h.data is not None and len(h.data) and h.data["cabang"].notna().any():
         hit = h.data.groupby("cabang").size()
         per_cabang = " (" + ", ".join(f"{c}: {format_angka(v)}" for c, v in hit.items()) + ")"
+    if h.data is not None and len(h.data) and h.jenis.kode in ("bill", "cogs", "recap_detail"):
         non = h.data[h.data["sales_type"] != "Sales"]
         if len(non):
             jenis = ", ".join(sorted({str(v) for v in non["sales_type"]}))
@@ -424,13 +427,20 @@ def cek_tanpa_hpp(cogs: HasilBaca | None) -> Cek:
 def validasi_unggahan(files: list[HasilBaca], awal: date, akhir: date,
                       tersimpan: list[dict] | None = None,
                       cabang: list[str] | None = None) -> LaporanValidasi:
+    from app.parser.esb import OPSIONAL
     cek: list[Cek] = []
     for h in files:
-        cek.append(cek_terbaca(h))
+        c = cek_terbaca(h)
+        if h.jenis in OPSIONAL and c.status == GAGAL:
+            # Laporan opsional yang rusak tidak menghalangi Bill + COGS; datanya saja yang tidak disimpan.
+            c.status = PERINGATAN
+            c.ringkasan += " Laporan opsional ini tidak disimpan."
+        cek.append(c)
     pakai = [h for h in files if h.bisa_dipakai]
-    for h in pakai:
+    utama = [h for h in pakai if h.jenis not in OPSIONAL]
+    for h in utama:
         cek.append(cek_cabang_periode(h, awal, akhir, cabang))
-    for h in pakai:
+    for h in utama:
         cek.append(cek_footer(h))
 
     def satu(jenis):
@@ -452,5 +462,8 @@ def validasi_unggahan(files: list[HasilBaca], awal: date, akhir: date,
     cek.append(cek_kelengkapan(bill, awal, akhir))
     cek.append(cek_salah_input(cogs))
     cek.append(cek_tanpa_hpp(cogs))
+    from app import validasi_opsional
+    ops = validasi_opsional.validasi(pakai, bill, cogs, awal, akhir)
+    cek += ops.cek
     cek.sort(key=lambda c: c.nomor)
-    return LaporanValidasi(cek)
+    return LaporanValidasi(cek, ops)

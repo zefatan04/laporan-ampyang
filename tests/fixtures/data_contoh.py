@@ -59,9 +59,57 @@ def _esb(con, tmp: Path):
                 items += [item(sn, t, m, q, h, c * q, cabang=cabang, **k) for m, q, h, c, k in isi]
     fs = [baca_file_esb(buat_bill(tmp / "contoh-bill.xlsx", bills, cabang=["Rungkut", "Mawar"], awal=AWAL, akhir=AKHIR)),
           baca_file_esb(buat_cogs(tmp / "contoh-cogs.xlsx", items, cabang=["Rungkut", "Mawar"], awal=AWAL, akhir=AKHIR))]
+    fs += [baca_file_esb(p) for p in _opsional(tmp, bills, items)]
     lap = validasi_unggahan(fs, AWAL, AKHIR)
     assert not lap.terblokir, [(c.nama, c.ringkasan) for c in lap.cek if c.status == "gagal"]
+    assert {k: sorted(v) for k, v in lap.opsional.simpan.items()} == {
+        k: ["Mawar", "Rungkut"] for k in ("promotion", "recap_detail", "staff", "cancel", "customer")}, \
+        [(c.nama, c.ringkasan, c.rincian) for c in lap.cek if c.nomor >= 30]
     db.simpan_unggahan(con, fs, lap, AWAL, AKHIR, simpan_walau_tidak_cocok=True)
+
+
+def _opsional(tmp: Path, bills: list[dict], items: list[dict]) -> list[Path]:
+    """Kelima laporan ESB opsional, disusun dari bill & item yang sama supaya lolos cek silang."""
+    from tests.test_esb_opsional import K_CANCEL, K_CUST, K_PROMO, K_RECAP, K_STAFF
+    from tests.fixtures.buat_esb import _tulis, footer_dari
+    kd = ["Rungkut", "Mawar"]
+    per_bill = {b["Sales Number"]: b for b in bills}
+    bayar = {sn: ("QRIS (ESB ORDER)" if b["Visit Purpose"] == "ESB ORDER" else
+                  ("QRIS BCA", "CASH", "DEBIT CARD BCA", "MEMBER DEPOSIT (10.000),QRIS BCA (5.000)")[int(sn[-2:]) % 4])
+             for sn, b in per_bill.items()}
+    promo = [{"Branch": b["Branch"], "Sales Date": b["Sales Date"], "Promotion Type": "MENU DISCOUNT(RP)",
+              "Promotion Name": "PROMO MEMBERSHIP SERBUK HEMAT", "Sales Number": sn, "Menu Name": "Mie Goreng Ayam Jamur",
+              "Qty": 1, "Discount Total": 0, "Voucher Discount": 0, "Bill Total": b["Grand Total"]}
+             for sn, b in per_bill.items() if b["Promotion"]]
+    recap = [{"Sales Number": i["Sales Number"], "Sales Type": "Sales", "Sales Date": i["Sales Date"], "Branch": i["Branch"],
+              "Visit Purpose": per_bill[i["Sales Number"]]["Visit Purpose"], "Payment Method": bayar[i["Sales Number"]],
+              "Menu": i["Menu"], "Order Mode": "EZO QS" if bayar[i["Sales Number"]].startswith("QRIS (ESB") else "POS",
+              "Qty": i["Qty"], "Subtotal": i["Total"]} for i in items]
+    staf = []
+    for c, nama in (("Rungkut", "Aisha"), ("Mawar", "Budi")):
+        for esb, user in ((False, nama), (True, "-")):
+            x = [i for i in items if i["Branch"].endswith(c) and (per_bill[i["Sales Number"]]["Visit Purpose"] == "ESB ORDER") == esb]
+            staf.append({"User": user, "Branch": f"Kedai Ampyang - {c}", "Sales Qty": sum(i["Qty"] for i in x),
+                         "Sales Total": sum(i["Total"] for i in x), "Cancel Qty": 0, "Cancel Total": 0, "Void Qty": 0,
+                         "Void Total": 0, "Remove Qty": 0, "Remove Total": 0})
+    staf[0].update({"Cancel Qty": 1, "Cancel Total": 15000})
+    batal = [{"Sales Number": "RX0929", "Branch": "Kedai Ampyang - Rungkut", "Menu": "Es Teh Tarik", "Menu Category": "BEVERAGE",
+              "Menu Category Detail": "TEH", "Order By": "Aisha", "Order Time": "2026-09-29 17:16:15", "Cancel / Void By": "Aisha",
+              "Cancel / Void Time": "2026-09-29 17:27:46", "Cancel / Void": "Cancel", "Cancel Notes": "salah input",
+              "Qty": 1, "Subtotal": 15000, "Total": 16500}]
+    cust = [{"Order ID": f"O{n}", "Sales Type": "Dine In (Quick service)", "Sales Number": sn, "Full Name": "Pelanggan",
+             "Email": "-", "Phone Number": f"0812000{n % 7:04d}"}
+            for n, (sn, b) in enumerate(per_bill.items()) if b["Visit Purpose"] == "ESB ORDER" and b["Branch"].endswith("Rungkut")]
+    return [
+        _tulis(tmp / "contoh-promo.xlsx", "Promotion Report", K_PROMO, promo,
+               footer_dari(promo, ["Qty", "Discount Total", "Voucher Discount", "Bill Total"]), kd, AWAL, AKHIR),
+        _tulis(tmp / "contoh-recap.xlsx", "Sales Recapitulation Detail", K_RECAP, recap, None, kd, AWAL, AKHIR,
+               baris_header=11, label_bawah=[("Rounding Total", "0")]),
+        _tulis(tmp / "contoh-staff.xlsx", "Staff Sales & Cancel Report", K_STAFF, staf, None, kd, AWAL, AKHIR,
+               baris_header=12, sales_type="Sales"),
+        _tulis(tmp / "contoh-cancel.xlsx", "Cancel Menu Detail Report", K_CANCEL, batal, None, kd, AWAL, AKHIR, baris_header=12),
+        _tulis(tmp / "contoh-customer.xlsx", "Customer Data Report", K_CUST, cust, None, kd, AWAL, AKHIR, baris_header=10),
+    ]
 
 
 def _loyalty(con, tmp: Path):

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -69,6 +69,12 @@ class JenisLaporan:
     # Terbukti dari export asli: Sales Menu COGS Report TIDAK punya baris
     # footer, jadi rekonsiliasinya lewat cek silang dengan Bill Report.
     punya_footer: bool = True
+    # Baris berlabel di bawah data (Recap Detail: "Rounding Total" dst.) dicatat, bukan galat.
+    footer_berlabel: bool = False
+    # Laporan tanpa kolom/metadata cabang (Customer Data): cabang ditentukan dari Bill Report.
+    tanpa_cabang: bool = False
+    # Baris berisi data pribadi: isi baris tidak pernah ditulis ke pesan validasi.
+    pribadi: bool = False
 
 
 BILL = JenisLaporan(
@@ -143,18 +149,101 @@ COGS = JenisLaporan(
     punya_footer=False,
 )
 
-# Laporan opsional: untuk sekarang hanya dikenali jenisnya. Parser
-# lengkapnya menyusul di tahap yang memakainya.
-RECAP_DETAIL = JenisLaporan("recap_detail", "Sales Recapitulation Detail Report", False, 11,
-                            ("Sales Number", "Menu", "Qty", "Bill Number"))
-PROMOTION = JenisLaporan("promotion", "Promotion Report", False, 13,
-                         ("Promotion Name",))
-CUSTOMER = JenisLaporan("customer", "Customer Data Report", False, 11,
-                        ("Order ID", "Full Name", "Phone Number"))
-STAFF = JenisLaporan("staff", "Staff Sales & Cancel Report", False, 12,
-                     ("User", "Cancel Qty"))
-CANCEL = JenisLaporan("cancel", "Cancel Menu Detail Report", False, 12,
-                      ("Menu", "Cancel Notes"))
+# Laporan opsional. Susunan kolom terbukti dari export asli 28 Sep – 4 Okt 2026.
+# Kolom berisi data pribadi (nama/email pelanggan, nama member) TIDAK dibaca.
+RECAP_DETAIL = JenisLaporan(
+    kode="recap_detail", nama="Sales Recapitulation Detail Report", wajib_unggah=False,
+    baris_header_terbukti=11, penanda=("Sales Number", "Bill Number", "Payment Method", "Order Mode"),
+    kolom_id="Sales Number",
+    kolom=(
+        Kolom("Sales Number", "sales_number", TEKS),
+        Kolom("Sales Type", "sales_type", TEKS),
+        Kolom("Sales Date", "sales_date", TANGGAL),
+        Kolom("Branch", "branch", TEKS),
+        Kolom("Visit Purpose", "visit_purpose", TEKS),
+        Kolom("Payment Method", "payment_method", TEKS),
+        Kolom("Order Mode", "order_mode", TEKS),
+        Kolom("Menu", "menu", TEKS),
+        Kolom("Qty", "qty", ANGKA),
+        Kolom("Subtotal", "subtotal", UANG),
+    ),
+    # Di bawah data ada baris berlabel (Discount Total Rounding, Rounding Total, ...),
+    # bukan footer total kolom. Kebenarannya dicek silang dengan Bill Report.
+    punya_footer=False, footer_berlabel=True,
+)
+PROMOTION = JenisLaporan(
+    kode="promotion", nama="Promotion Report", wajib_unggah=False,
+    baris_header_terbukti=13, penanda=("Promotion Name", "Promotion Type", "Sales Number"),
+    kolom_id="Sales Number",
+    kolom=(
+        Kolom("Branch", "branch", TEKS),
+        Kolom("Sales Date", "sales_date", TANGGAL),
+        Kolom("Promotion Type", "promotion_type", TEKS),
+        Kolom("Promotion Name", "promotion_name", TEKS),
+        Kolom("Sales Number", "sales_number", TEKS),
+        Kolom("Menu Name", "menu", TEKS),
+        Kolom("Qty", "qty", ANGKA),
+        Kolom("Discount Total", "discount_total", UANG),
+        Kolom("Voucher Discount", "voucher_discount", UANG),
+        Kolom("Bill Total", "bill_total", UANG),
+    ),
+    kolom_footer=("Qty", "Discount Total", "Voucher Discount", "Bill Total"),
+)
+CUSTOMER = JenisLaporan(
+    kode="customer", nama="Customer Data Report", wajib_unggah=False,
+    baris_header_terbukti=10, penanda=("Order ID", "Phone Number", "Sales Number"),
+    # Sales Type satu-satunya kolom yang selalu terisi (Order ID kosong di 17 baris, Sales Number di 4).
+    kolom_id="Sales Type",
+    kolom=(
+        Kolom("Order ID", "order_id", TEKS, wajib=False),
+        Kolom("Sales Type", "sales_type", TEKS),
+        Kolom("Sales Number", "sales_number", TEKS),
+        # Diubah menjadi sidik (hash) di parser; nomor asli tidak disimpan.
+        Kolom("Phone Number", "telp", TEKS),
+    ),
+    punya_footer=False, tanpa_cabang=True, pribadi=True,
+)
+STAFF = JenisLaporan(
+    kode="staff", nama="Staff Sales & Cancel Report", wajib_unggah=False,
+    baris_header_terbukti=12, penanda=("User", "Sales Qty", "Cancel Qty", "Void Qty"),
+    kolom_id="User",
+    kolom=(
+        Kolom("User", "staf", TEKS),
+        Kolom("Branch", "branch", TEKS),
+        Kolom("Sales Qty", "sales_qty", ANGKA),
+        Kolom("Sales Total", "sales_total", UANG),
+        Kolom("Cancel Qty", "cancel_qty", ANGKA),
+        Kolom("Cancel Total", "cancel_total", UANG),
+        Kolom("Void Qty", "void_qty", ANGKA),
+        Kolom("Void Total", "void_total", UANG),
+        Kolom("Remove Qty", "remove_qty", ANGKA),
+        Kolom("Remove Total", "remove_total", UANG),
+    ),
+    punya_footer=False,
+)
+CANCEL = JenisLaporan(
+    kode="cancel", nama="Cancel Menu Detail Report", wajib_unggah=False,
+    baris_header_terbukti=12, penanda=("Menu", "Cancel Notes", "Cancel / Void By"),
+    kolom_id="Sales Number",
+    kolom=(
+        Kolom("Sales Number", "sales_number", TEKS),
+        Kolom("Branch", "branch", TEKS),
+        Kolom("Menu", "menu", TEKS),
+        Kolom("Menu Category", "menu_category", TEKS),
+        Kolom("Menu Category Detail", "menu_category_detail", TEKS),
+        Kolom("Order By", "dipesan_oleh", TEKS),
+        Kolom("Order Time", "waktu_pesan", TEKS),
+        Kolom("Cancel / Void By", "dibatalkan_oleh", TEKS),
+        Kolom("Cancel / Void Time", "waktu_batal", TEKS),
+        Kolom("Cancel / Void", "jenis_batal", TEKS),
+        Kolom("Cancel Notes", "catatan", TEKS, wajib=False),
+        Kolom("Qty", "qty", ANGKA),
+        Kolom("Subtotal", "subtotal", UANG),
+        Kolom("Total", "total", UANG),
+    ),
+    punya_footer=False,
+)
+OPSIONAL = (RECAP_DETAIL, PROMOTION, CUSTOMER, STAFF, CANCEL)
 
 # Urutan penting: yang penandanya paling spesifik dicek lebih dulu.
 SEMUA_JENIS = (BILL, COGS, RECAP_DETAIL, PROMOTION, CUSTOMER, STAFF, CANCEL)
@@ -181,6 +270,7 @@ class HasilBaca:
     kolom_hilang: list[str] = field(default_factory=list)
     data: pd.DataFrame | None = None
     footer: dict[str, Decimal | None] = field(default_factory=dict)
+    footer_label: dict[str, str | None] = field(default_factory=dict)
     baris_footer: int | None = None
     galat: list[Catatan] = field(default_factory=list)       # menghalangi pemakaian
     peringatan: list[Catatan] = field(default_factory=list)  # perlu dibaca user
@@ -322,7 +412,7 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
         hasil.peringatan.append(Catatan(None, str(e)))
     if hasil.periode is None and "period" not in hasil.metadata:
         hasil.peringatan.append(Catatan(None, "Metadata 'Period' tidak ditemukan di atas header."))
-    if "branch" not in hasil.metadata:
+    if "branch" not in hasil.metadata and not jenis.tanpa_cabang:
         hasil.peringatan.append(Catatan(None, "Metadata 'Branch' tidak ditemukan di atas header."))
 
     header = sel[i_header]
@@ -367,7 +457,7 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
             break
         if _isi(b) and not _baris_data(b, i_id):
             hasil.galat.append(Catatan(n, f"Baris tanpa '{jenis.kolom_id}' di tengah data: "
-                                          f"{_ringkas(b)}. Bentuk baris ini belum dikenal."))
+                                          f"{_ringkas(b, jenis)}. Bentuk baris ini belum dikenal."))
 
     # Footer = baris setelah data terakhir yang memuat angka di kolom footer.
     i_footer_kol = {nama: indeks[norm(nama)] for nama in jenis.kolom_footer if norm(nama) in indeks}
@@ -376,17 +466,21 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
         if n <= terakhir_data or not _isi(b):
             continue
         punya_angka = any(j < len(b) and not _kosong(b[j]) for j in i_footer_kol.values())
+        if jenis.footer_berlabel and not punya_angka:
+            isi = [str(v).strip() for v in _isi(b)]
+            hasil.footer_label[isi[0]] = isi[-1] if len(isi) > 1 else None
+            continue
         (calon.append((n, b)) if punya_angka else
-         hasil.peringatan.append(Catatan(n, f"Baris setelah data diabaikan: {_ringkas(b)}")))
+         hasil.peringatan.append(Catatan(n, f"Baris setelah data diabaikan: {_ringkas(b, jenis)}")))
     if not jenis.punya_footer:
         for n, b in calon:
-            hasil.galat.append(Catatan(n, f"Ada baris setelah data padahal laporan ini tidak punya footer: {_ringkas(b)}"))
+            hasil.galat.append(Catatan(n, f"Ada baris setelah data padahal laporan ini tidak punya footer: {_ringkas(b, jenis)}"))
     elif not calon:
         hasil.galat.append(Catatan(None, "Baris footer (total) tidak ditemukan. Rekonsiliasi tidak bisa dilakukan."))
     else:
         if len(calon) > 1:
             for n, b in calon[1:]:
-                hasil.galat.append(Catatan(n, f"Ada lebih dari satu baris mirip footer: {_ringkas(b)}"))
+                hasil.galat.append(Catatan(n, f"Ada lebih dari satu baris mirip footer: {_ringkas(b, jenis)}"))
         hasil.baris_footer, b = calon[0]
         for nama, j in i_footer_kol.items():
             try:
@@ -422,13 +516,48 @@ def baca_file_esb(path: str | Path, nama_file: str | None = None) -> HasilBaca:
         if k in df.columns:  # ESB menyisakan spasi di ujung, mis. 'TEH ', 'ADD ON '
             df[k] = df[k].map(lambda v: bersihkan_nama_menu(v) if v is not None else None)
 
+    if jenis.tanpa_cabang:
+        df["cabang"] = None
+        _pasca(jenis, df, hasil)
+        hasil.data = df
+        return hasil
     # Satu export bisa memuat beberapa cabang (kolom Branch per baris).
     df["cabang"] = df["branch"].map(nama_cabang)
     for nilai in sorted({b for b, c in zip(df["branch"], df["cabang"]) if c is None}, key=str):
         n = df.loc[df["branch"] == nilai, "baris_excel"] if nilai is not None else df.loc[df["branch"].isna(), "baris_excel"]
         hasil.galat.append(Catatan(int(n.iloc[0]), f"Cabang '{nilai}' tidak dikenal ({len(n)} baris)."))
+    _pasca(jenis, df, hasil)
     hasil.data = df
     return hasil
+
+
+def _waktu(teks):
+    if teks is None:
+        return None
+    try:
+        return datetime.strptime(str(teks).strip(), "%Y-%m-%d %H:%M:%S")
+    except ValueError as e:
+        raise ValueError(f"waktu '{teks}' bukan format YYYY-MM-DD HH:MM:SS") from e
+
+
+def _pasca(jenis: JenisLaporan, df: pd.DataFrame, hasil: HasilBaca):
+    """Pengolahan khusus per jenis laporan opsional setelah baris dibaca."""
+    if jenis.kode == "customer":
+        from app.parser.loyalty import sidik
+        # Nomor telepon tidak pernah disimpan: langsung diganti sidiknya.
+        df["telp"] = df["telp"].map(lambda v: None if v in (None, "-") else sidik(v))
+        kosong = df["sales_number"].isna() | df["sales_number"].isin(["-"])
+        if kosong.any():
+            hasil.peringatan.append(Catatan(None, f"{int(kosong.sum())} baris tanpa Sales Number dilewati."))
+        df.drop(df.index[kosong], inplace=True)
+    if jenis.kode == "cancel":
+        for k in ("waktu_pesan", "waktu_batal"):
+            try:
+                df[k] = df[k].map(_waktu)
+            except ValueError as e:
+                hasil.galat.append(Catatan(None, f"Kolom {k}: {e}"))
+        if not hasil.galat:
+            df["tanggal"] = df["waktu_batal"].map(lambda w: w.date() if w else None)
 
 
 def nama_cabang(teks) -> str | None:
@@ -446,6 +575,8 @@ def daftar_cabang_metadata(teks: str | None) -> list[str] | None:
     return None if any(h is None for h in hasil) else sorted(hasil)
 
 
-def _ringkas(baris: list, n: int = 6) -> str:
+def _ringkas(baris: list, jenis: JenisLaporan | None = None, n: int = 6) -> str:
+    if jenis is not None and jenis.pribadi:
+        return "(isi baris tidak ditampilkan: berisi data pribadi)"
     isi = [str(v) for v in _isi(baris)]
     return " | ".join(isi[:n]) + (" | …" if len(isi) > n else "")
