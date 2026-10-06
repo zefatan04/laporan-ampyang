@@ -1,0 +1,11 @@
+# Data asli berisi omzet dan nomor WA pelanggan: jangan pernah masuk git.
+/data/*
+!/data/.gitkeep
+/samples/*
+!/samples/README.md
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+/ekspor/
