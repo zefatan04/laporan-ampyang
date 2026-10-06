@@ -102,7 +102,7 @@ def _kualitas(con, d: DataRentang, libur_ok: bool, senin_periode: list[date]) ->
     file = [
         {"file": "Bill Report (wajib)", "status": "ada" if cakup("bill") else "tidak ada", "keterangan": f"{cakup('bill')}/{len(d.hari)} hari"},
         {"file": "Sales Menu COGS Report (wajib)", "status": "ada" if cakup("cogs") else "tidak ada", "keterangan": f"{cakup('cogs')}/{len(d.hari)} hari"},
-    ] + [{"file": f, "status": "belum diolah", "keterangan": "opsional; parser dibuat setelah ada contoh file asli"} for f in (
+    ] + [{"file": f, "status": "belum diolah", "keterangan": "opsional; aplikasi belum bisa membaca laporan ini (butuh satu contoh file dari ESB). Untuk sekarang tidak perlu diunggah."} for f in (
         "Promotion Report", "Customer Data Report", "Staff Sales & Cancel Report", "Cancel Menu Detail Report")]
     from app.hitung.membership import muat_loyalty
     L = muat_loyalty(con, d.cabang, d.awal, d.akhir)

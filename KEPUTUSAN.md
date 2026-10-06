@@ -219,7 +219,7 @@ Pengaturan → Kampanye iklan (pengaturan tersimpan di laptop user).
 | Saran | Jenis baru "saran" (usulan tindakan + argumen dari angka). Saran tidak boleh memuat angka baru; kalimat dengan target/persentase karangan dibuang oleh verifikasi. Teks dugaan dan saran selalu diawali "Dugaan:"/"Saran:". |
 | Ekspor HTML | Satu file berisi CSS, Chart.js, data dashboard, dan script tampilan yang sama dengan aplikasi (inline). Tab, grafik, kotak Temuan, dan "Dari mana angka ini?" tetap berfungsi; tombol yang butuh server (pindah periode, unduh, tempel) tidak ada. Penutup `</script` di data/skrip diloloskan. |
 | Tes browser | `tests/test_browser.py` (Playwright + Chromium) atas `tests/fixtures/data_contoh.py` (data buatan 5 minggu dua cabang + loyalty + Instagram + pengaturan): semua tab, kedua cabang, minggu dan bulan, lebar 1280 dan 390px, halaman Upload/Riwayat/Pengaturan, alur tempel jawaban, dan file ekspor dibuka dari disk. Syarat: 0 error konsol, tanpa scroll horizontal, dialog "Dari mana angka ini?" terbuka. |
-| Laporan ESB opsional | Promotion, Customer Data, Staff Sales & Cancel, Cancel Menu Detail: **belum diolah** karena belum ada contoh file asli (aturan "jangan menebak"). Panel kualitas data menulis "belum diolah". |
+| Laporan ESB opsional | Promotion, Customer Data, Staff Sales & Cancel, Cancel Menu Detail: **belum diolah** karena belum ada contoh file asli (aturan "jangan menebak"). Panel kualitas data menulis "belum diolah — tidak perlu diunggah". Pengenal jenisnya (nama kolom) masih perkiraan dari spesifikasi: file yang cocok dilewati, file yang tidak cocok ditolak sebagai "tidak dikenali" dan memblokir simpan. |
 
 ## Laporan khusus cabang (6 Okt 2026)
 
