@@ -8,20 +8,22 @@ from decimal import Decimal
 from app import pengaturan
 from app import pengaturan_bawaan as P
 from app.angka import format_angka, format_rupiah
-from app.hitung import foot_traffic, membership, menu, overview, promo
+from app import db_ig
+from app.hitung import foot_traffic, membership, menu, overview, promo, sosmed
 from app.hitung.data import DataRentang, muat
 from app.hitung.minggu import (BULAN_PANJANG, Rentang, bulan_penuh, bulan_sebelumnya, label_tanggal,
                                minggu_bulan, minggu_sebelumnya, ringkas_tanggal)
 from app.hitung.nilai import bagi, jumlah
 from app.hitung.overview import tgl
 
-TAB_MENYUSUL = {
-    "sosmed": ("Performa Sosial Media & Campaign/Konten", 8),
-}
+TAB_MENYUSUL: dict[str, tuple[str, int]] = {}
 
 
 def bulan_tersedia(con) -> list[str]:
-    r = con.execute("SELECT min(awal), max(akhir) FROM periode").fetchone()
+    """Bulan dari data ESB pertama sampai terakhir, ditambah bulan yang punya data Instagram."""
+    db_ig.pastikan(con)
+    r = con.execute("""SELECT min(a), max(z) FROM (SELECT awal a, akhir z FROM periode
+                       UNION ALL SELECT awal, akhir FROM ig_cakupan)""").fetchone()
     if not r or r[0] is None:
         return []
     hasil, t = [], date(r[0].year, r[0].month, 1)
@@ -92,7 +94,7 @@ def _tabel_bulanan(con, cabang: str, tahun: int, bulan: int, minggu: list[Rentan
             "catatan": ("Hari tanpa data unggahan (dihitung 0 di jembatan ini): " + ringkas_tanggal(tanpa)) if tanpa else None}
 
 
-def _kualitas(con, d: DataRentang, libur_ok: bool) -> dict:
+def _kualitas(con, d: DataRentang, libur_ok: bool, senin_periode: list[date]) -> dict:
     per = con.execute("""
         SELECT p.unggahan_id, p.jenis, p.awal, p.akhir, p.rekonsiliasi_gagal, u.file_bill, u.file_cogs
         FROM periode p JOIN unggahan u ON u.id = p.unggahan_id
@@ -104,11 +106,12 @@ def _kualitas(con, d: DataRentang, libur_ok: bool) -> dict:
         {"file": "Sales Menu COGS Report (wajib)", "status": "ada" if cakup("cogs") else "tidak ada", "keterangan": f"{cakup('cogs')}/{len(d.hari)} hari"},
     ] + [{"file": f, "status": "tidak ada", "keterangan": f"diolah mulai tahap {t}"} for f, t in (
         ("Promotion Report", 10), ("Customer Data Report", 10), ("Staff Sales & Cancel Report", 10),
-        ("Cancel Menu Detail Report", 10), ("Instagram Insights (opsional)", 8))]
+        ("Cancel Menu Detail Report", 10))]
     from app.hitung.membership import muat_loyalty
     L = muat_loyalty(con, d.cabang, d.awal, d.akhir)
     file.insert(2, {"file": "Data loyalty Keluarga Ampyang (CSV)", "status": "ada" if L.ada_data else "tidak ada",
                     "keterangan": f"{len(L.tercakup)}/{len(L.hari)} hari" + (f"; Rekap Pelanggan per {L.snapshot:%d-%m-%Y}" if L.snapshot else "")})
+    file += sosmed.kualitas(con, d, senin_periode)
     rekon = []
     for uid in sorted({p[0] for p in per}):
         p = next(x for x in per if x[0] == uid)
@@ -171,9 +174,12 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
         ty, tb = bulan_sebelumnya(tahun, bulan)
         prev_r = bulan_penuh(ty, tb)
         label_prev = f"Dibanding bulan sebelumnya ({BULAN_PANJANG[tb - 1]} {ty})"
+        senin_periode = [m.awal for m in minggu]
+        senin_prev = [m.awal for m in minggu_bulan(ty, tb)]
     else:
         prev_r = minggu_sebelumnya(r)
         label_prev = f"Dibanding minggu sebelumnya ({label_tanggal(prev_r.awal, prev_r.akhir)})"
+        senin_periode, senin_prev = [r.awal], [prev_r.awal]
     dp = muat(con, cabang, prev_r.awal, prev_r.akhir)
     rp = overview.ringkas(dp)
 
@@ -198,7 +204,8 @@ def hitung(con, cabang: str, tahun: int, bulan: int, pilih: str) -> dict:
         **{t: menu.hitung(con, t, d, dp, label_prev) for t in ("makanan", "kudapan", "minuman")},
         "promo": promo.hitung(con, d),
         "membership": membership.hitung(con, d, dp, label_prev),
-        "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi"))),
+        "sosmed": sosmed.hitung(con, d, senin_periode, (prev_r.awal, prev_r.akhir, senin_prev), label_prev, libur),
+        "kualitas": _kualitas(con, d, bool(pengaturan.ambil(con, "hari_libur_terverifikasi")), senin_periode),
         "menyusul": [{"kode": k, "nama": n, "tahap": t} for k, (n, t) in TAB_MENYUSUL.items()],
         "jendela_waktu": P.JENDELA_WAKTU,
     }

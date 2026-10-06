@@ -15,9 +15,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app import db, db_loyalty
+from app import db, db_ig, db_loyalty
 from app.hitung import dashboard
 from app.parser.esb import baca_file_esb, daftar_cabang_metadata
+from app.parser.instagram import baca_file_ig, teks_ig
 from app.parser.loyalty import baca_file_loyalty, baca_teks, kenali
 from app.validasi import validasi_unggahan
 from app import validasi_loyalty as vl
@@ -44,6 +45,8 @@ def beranda():
 
 
 def _jenis_csv(isi: bytes) -> str | None:
+    if teks_ig(isi) is not None:
+        return "instagram"
     teks = baca_teks(isi)
     if teks is None:
         return None
@@ -52,21 +55,28 @@ def _jenis_csv(isi: bytes) -> str | None:
 
 
 @app.post("/api/unggah")
-async def unggah(awal: date = Form(...), akhir: date = Form(...), cabang: str = Form(""),
+async def unggah(awal: date = Form(...), akhir: date = Form(...), cabang: str = Form(""), akun: str = Form(""),
                  files: list[UploadFile] = File(...)):
-    """Semua file sekaligus: .xlsx dibaca sebagai export ESB, .csv dikenali dari isinya (loyalty)."""
+    """Semua file sekaligus: .xlsx dibaca sebagai export ESB, .csv dikenali dari isinya (loyalty/Instagram).
+
+    Tanggal mulai/akhir dipakai untuk ESB dan loyalty. File Instagram membawa
+    tanggalnya sendiri (satu baris per hari) dan akunnya dipilih di `akun`.
+    """
     if akhir < awal:
         raise HTTPException(400, "Tanggal akhir lebih awal dari tanggal mulai.")
     _bersihkan_antre()
-    esb, loy, asing = [], [], []
+    esb, loy, ig, asing = [], [], [], []
     with tempfile.TemporaryDirectory() as tmp:
         for f in files:
             p = Path(tmp) / Path(f.filename or "file").name
             with p.open("wb") as keluar:
                 shutil.copyfileobj(f.file, keluar)
             if p.suffix.lower() == ".csv":
-                if _jenis_csv(p.read_bytes()) == "loyalty":
+                jenis = _jenis_csv(p.read_bytes())
+                if jenis == "loyalty":
                     loy.append(baca_file_loyalty(p, nama_file=f.filename))
+                elif jenis == "instagram":
+                    ig.append(baca_file_ig(p, nama_file=f.filename))
                 else:
                     asing.append(f.filename)
             else:
@@ -76,6 +86,7 @@ async def unggah(awal: date = Form(...), akhir: date = Form(...), cabang: str = 
     with db.koneksi() as con:
         tersimpan = db.periode_tersimpan(con)
         tersimpan_loy = db_loyalty.periode_tersimpan(con)
+        lama_ig = db_ig.tersimpan(con, akun) if ig and akun in db_ig.AKUN else {}
     cek, terblokir, konfirmasi, tumpang = [], False, False, []
     lap = None
     if esb:
@@ -95,15 +106,26 @@ async def unggah(awal: date = Form(...), akhir: date = Form(...), cabang: str = 
         cab = {c for h in loy if h.bisa_dipakai and h.jenis in vl.BERKALA for c in vl.cabang_file(h)}
         tumpang += [{**p, "jenis": "loyalty"} for p in tersimpan_loy
                     if p["cabang"] in cab and p["awal"] <= akhir and p["akhir"] >= awal]
+    cek_ig, gabung_ig = [], {}
+    if ig:
+        cek_ig, info = db_ig.validasi(ig, akun or None, lama_ig)
+        gabung_ig = info["gabung"]
+        cek += cek_ig
+        terblokir |= db_ig.terblokir(cek_ig)
+        if info["konflik_lama"]:
+            per = [t for h, a, z in db_ig.cakupan_file(ig) for t in (a, z)]
+            tumpang.append({"cabang": f"Instagram {akun}", "jenis": f"({info['konflik_lama']} nilai harian berbeda)",
+                            "awal": min(per), "akhir": max(per)})
     if asing:
         from app.validasi import GAGAL, Cek
         cek.append(Cek(0, "File tidak dikenali", GAGAL,
-                       "File CSV ini bukan ekspor loyalty yang dikenal (CSV Instagram diolah mulai tahap 8). "
+                       "File CSV ini bukan ekspor loyalty atau Instagram Insights yang dikenal. "
                        "Keluarkan dari unggahan.", [{"File": n} for n in asing]))
         terblokir = True
 
     token = secrets.token_urlsafe(16)
     _ANTRE[token] = {"waktu": time.time(), "esb": esb, "laporan": lap, "loyalty": loy, "cek_loyalty": cek_loy,
+                     "ig": ig, "cek_ig": cek_ig, "gabung_ig": gabung_ig, "akun": akun,
                      "awal": awal, "akhir": akhir, "terblokir": terblokir}
     return {
         "token": token,
@@ -123,7 +145,15 @@ async def unggah(awal: date = Form(...), akhir: date = Form(...), cabang: str = 
             "cabang": vl.cabang_file(h) if h.jenis else [],
             "periode": [h.tanggal_snapshot, h.tanggal_snapshot] if h.tanggal_snapshot else None,
             "baris": 0 if h.data is None else len(h.data),
-        } for h in loy] + [{"nama": n, "jenis": None, "kode": None, "diolah": False, "cabang": [], "periode": None, "baris": 0}
+        } for h in loy] + [{
+            "nama": h.nama_file,
+            "jenis": f"Instagram · {h.metrik.nama}" if h.metrik else None,
+            "kode": h.metrik.kode if h.metrik else None,
+            "diolah": h.metrik is not None,
+            "cabang": [f"akun {akun}"] if akun else ["akun belum dipilih"],
+            "periode": list(h.periode) if h.periode else None,
+            "baris": 0 if h.data is None else len(h.data),
+        } for h in ig] + [{"nama": n, "jenis": None, "kode": None, "diolah": False, "cabang": [], "periode": None, "baris": 0}
                            for n in asing],
         "cek": [asdict(c) for c in cek],
         "terblokir": terblokir,
@@ -155,6 +185,10 @@ def simpan(req: PermintaanSimpan):
                     raise db.TidakBolehDisimpan("Rekonsiliasi ESB tidak cocok. Centang 'simpan walau tidak cocok'.")
             if antre["loyalty"] and vl.butuh_konfirmasi(antre["cek_loyalty"]) and not req.simpan_walau_tidak_cocok:
                 raise db.TidakBolehDisimpan("Rekonsiliasi loyalty tidak cocok. Centang 'simpan walau tidak cocok'.")
+            if antre["ig"]:
+                lama = db_ig.tersimpan(con, antre["akun"])
+                if any(k in lama and lama[k] != v for k, v in antre["gabung_ig"].items()) and not req.ganti:
+                    raise db.TidakBolehDisimpan("Ada nilai Instagram yang berbeda dengan yang tersimpan. Centang 'ganti'.")
             if antre["esb"]:
                 hasil["unggahan_id"] = db.simpan_unggahan(con, antre["esb"], antre["laporan"], antre["awal"], antre["akhir"],
                                                           ganti=req.ganti, simpan_walau_tidak_cocok=req.simpan_walau_tidak_cocok)
@@ -162,6 +196,9 @@ def simpan(req: PermintaanSimpan):
                 hasil["unggahan_loyalty_id"] = db_loyalty.simpan(con, antre["loyalty"], antre["cek_loyalty"], antre["awal"],
                                                                  antre["akhir"], ganti=req.ganti,
                                                                  simpan_walau_tidak_cocok=req.simpan_walau_tidak_cocok)
+            if antre["ig"]:
+                hasil["unggahan_ig_id"] = db_ig.simpan(con, antre["ig"], antre["akun"], antre["cek_ig"],
+                                                       antre["gabung_ig"], ganti=req.ganti)
         except db.TidakBolehDisimpan as e:
             raise HTTPException(409, str(e)) from e
     _ANTRE.pop(req.token, None)
@@ -179,7 +216,15 @@ def hapus_loyalty(unggahan_id: int, cabang: str):
 @app.get("/api/riwayat")
 def lihat_riwayat():
     with db.koneksi() as con:
-        return db.riwayat(con)
+        return {**db.riwayat(con), "instagram": db_ig.riwayat(con)}
+
+
+@app.delete("/api/instagram/{unggahan_id}")
+def hapus_ig(unggahan_id: int):
+    with db.koneksi() as con:
+        if not db_ig.hapus_unggahan(con, unggahan_id):
+            raise HTTPException(404, "Unggahan Instagram tidak ditemukan.")
+    return {"ok": True}
 
 
 @app.delete("/api/periode/{unggahan_id}/{cabang}")

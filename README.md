@@ -8,11 +8,12 @@ Prinsip utama: **angka yang salah lebih buruk daripada angka yang kosong.**
 Data yang tidak ada atau tidak cocok ditampilkan sebagai "Tidak diketahui"
 beserta alasannya.
 
-> Status: tahap 7 dari 10. Sudah bisa: upload Bill Report + COGS Report,
-> laporan validasi, simpan, riwayat data, dashboard tab Overview Omzet,
-> Makanan, Kudapan, Minuman, Foot Traffic, Promo, dan Membership (mingguan
-> M1–M5 + Bulan Penuh) dengan tombol "Dari mana angka ini?", panel kualitas
-> data, dan Pengaturan. Tab Sosmed menyusul.
+> Status: tahap 8 dari 10. Sudah bisa: upload Bill Report + COGS Report,
+> CSV loyalty, dan CSV Instagram Insights; laporan validasi, simpan, riwayat
+> data; dashboard kedelapan tab (Overview Omzet, Makanan, Kudapan, Minuman,
+> Foot Traffic, Promo, Membership, Sosmed & Campaign; mingguan M1–M5 + Bulan
+> Penuh) dengan tombol "Dari mana angka ini?", panel kualitas data, dan
+> Pengaturan. Narasi otomatis dan ekspor HTML menyusul.
 
 ## Memasang (Windows)
 
@@ -38,6 +39,18 @@ sekaligus dalam satu export.
 Dari halaman Ekspor di panel pemilik, per cabang (buka subdomain cabangnya):
 Riwayat Transaksi, Riwayat Klaim, Rekap Harian, Log Aktivitas, dan Rekap
 Pelanggan. Semua CSV boleh diunggah sekaligus bersama file ESB.
+
+### Export Instagram (opsional)
+
+Dari Meta Business Suite → Insights, unduh CSV per metrik: Tayangan,
+Jangkauan, Interaksi, Kunjungan (profil), Klik tautan, Pengikut. File
+mingguan dan file rentang panjang boleh dicampur; tanggal yang sama hanya
+dipakai sekali. Saat upload, pilih **akun Instagram** (Brand/Rungkut/Mawar),
+karena nama akun tidak ada di isi file. Bila CSV tidak bisa diunduh, isi
+total mingguan di Pengaturan → Input manual Instagram.
+
+Kampanye iklan (tanggal, cabang sasaran, anggaran, akun) diisi di
+Pengaturan → Kampanye iklan.
 
 ## Mengecek file ESB lewat terminal (tanpa menyimpan)
 

@@ -18,6 +18,9 @@ samples/
 
 Nama file bebas: jenis laporan dikenali dari isinya.
 
+CSV Instagram Insights disimpan per akun di `samples/instagram/<akun>/`
+(mis. `samples/instagram/brand/Tayangan Sep 4.csv`).
+
 ## Menjalankan tes
 
 ```

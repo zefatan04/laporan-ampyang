@@ -181,6 +181,7 @@ async function muatRiwayat() {
     elM.innerHTML = `<div class="pesan galat">${esc(e.message)}</div>`;
     return;
   }
+  riwayatIg(r.instagram);
   if (!r.periode.length) {
     elM.innerHTML = `<div class="kartu kosong">Belum ada data tersimpan. <a href="#upload">Upload data ESB</a>.</div>`;
     elP.innerHTML = "";
@@ -224,6 +225,38 @@ async function muatRiwayat() {
     const url = sumber === "loyalty" ? "/api/periode-loyalty" : "/api/periode";
     try {
       await api(`${url}/${encodeURIComponent(id)}/${encodeURIComponent(cabang)}`, { method: "DELETE" });
+      muatRiwayat();
+    } catch (e) { alert(e.message); }
+  }));
+}
+
+function riwayatIg(ig) {
+  const el = document.getElementById("riwayat-ig");
+  if (!ig.unggahan.length) {
+    el.innerHTML = `<div class="kartu kosong">Belum ada data Instagram. Data ini opsional; tanpa data, metrik Instagram tampil "Tidak diketahui".</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="kartu"><div class="gulir"><table class="tabel-minggu tumpuk">
+    <thead><tr><th>Minggu</th>${ig.akun.map((a) => `<th>Akun ${esc(a)}</th>`).join("")}</tr></thead>
+    <tbody>${ig.minggu.map((m) => `<tr><th>${tgl(m.senin)} – ${tgl(m.minggu)}</th>${ig.akun.map((a) =>
+      `<td data-label="Akun ${esc(a)}">${lencana(m.sel[a].status)}<span class="ket">${esc(m.sel[a].keterangan)}</span></td>`).join("")}</tr>`).join("")}
+    </tbody></table></div>
+    <p class="catatan">"Lengkap" = keenam metrik (tayangan, jangkauan, interaksi, kunjungan profil, klik tautan, pengikut) diunggah untuk 7 hari.
+      Pengikut: hari tanpa baris di file dihitung "tidak tercatat", bukan 0.</p></div>
+    <div class="kartu"><div class="gulir"><table class="tumpuk"><thead><tr><th>Akun · rentang</th><th>File</th>
+      <th class="angka">Nilai harian</th><th>Diunggah</th><th>Tindakan</th></tr></thead><tbody>
+    ${ig.unggahan.map((u) => `<tr>
+      <th>${esc(u.akun)} · ${u.awal ? `${tgl(u.awal)} – ${tgl(u.akhir)}` : "-"}</th>
+      <td data-label="File">${esc(u.file.join(", "))}</td>
+      <td class="angka" data-label="Nilai harian">${Number(u.nilai_ditulis).toLocaleString("id-ID")}</td>
+      <td data-label="Diunggah">${esc(String(u.waktu).slice(0, 16).replace("T", " "))}</td>
+      <td><button class="tombol bahaya" data-hapus-ig="${esc(u.unggahan_id)}">Hapus</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="catatan">Tanggal yang ada di beberapa unggahan memakai nilai unggahan terbaru. Menghapus satu unggahan mengembalikan nilai dari unggahan sebelumnya.</p></div>`;
+  el.querySelectorAll("[data-hapus-ig]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm("Hapus unggahan Instagram ini? Tindakan ini tidak bisa dibatalkan.")) return;
+    try {
+      await api(`/api/instagram/${encodeURIComponent(b.dataset.hapusIg)}`, { method: "DELETE" });
       muatRiwayat();
     } catch (e) { alert(e.message); }
   }));

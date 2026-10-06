@@ -20,6 +20,11 @@ async function muatPengaturan() {
     [p.nama, p.mulai, p.selesai, p.cabang, p.promotion_esb.join("; "), p.menu_promo.join("; ")].join(" | ")).join("\n");
   document.getElementById("isi-internal").value = s.promotion_internal.join("; ");
   document.getElementById("isi-ambang").value = s.ambang_netral_persen;
+  document.getElementById("isi-kampanye").value = s.kampanye.map((k) =>
+    [k.nama, k.mulai, k.selesai, k.cabang, k.anggaran, k.akun, k.platform, k.tujuan, k.menu_promo.join("; ")].join(" | ")).join("\n");
+  document.getElementById("isi-konten").value = s.konten.map((k) => [k.tanggal, k.akun, k.format, k.topik].join(" | ")).join("\n");
+  document.getElementById("isi-ig-manual").value = s.ig_manual.map((x) =>
+    `${x.akun} | ${x.senin} | ${Object.entries(x.nilai).map(([m, v]) => `${m}=${v}`).join(" ; ")}`).join("\n");
   document.getElementById("isi-suhu").value = Object.entries(s.suhu_per_menu).map(([m, v]) => `${m} = ${v}`).join("\n");
   document.getElementById("isi-kategori").innerHTML = Object.entries(s.kategori).map(([k, v]) =>
     `<label>${esc(LABEL_KATEGORI[k] || k)}<input data-kat="${esc(k)}" value="${esc(v.join(", "))}"></label>`).join("");
@@ -87,6 +92,46 @@ const PENYIMPAN = {
       return { nama: b[0], mulai: b[1], tab: b[2] };
     });
     await kirim("menu_baru", m);
+  },
+  async kampanye() {
+    const daftar = baris("isi-kampanye").map((x) => {
+      const b = x.split("|").map((y) => y.trim());
+      while (b.length < 9) b.push("");
+      if (b.length > 9 || !b[0] || !/^\d{4}-\d{2}-\d{2}$/.test(b[1]) || !/^\d{4}-\d{2}-\d{2}$/.test(b[2])
+          || !["Rungkut", "Mawar", "keduanya"].includes(b[3]) || !/^\d*$/.test(b[4]) || !["Brand", "Rungkut", "Mawar"].includes(b[5])) {
+        throw new Error(`Baris kampanye tidak sesuai format (anggaran tanpa titik, akun Brand/Rungkut/Mawar): "${x}"`);
+      }
+      return { nama: b[0], mulai: b[1], selesai: b[2], cabang: b[3], anggaran: b[4], akun: b[5], platform: b[6], tujuan: b[7],
+               menu_promo: b[8].split(";").map((y) => y.trim()).filter(Boolean) };
+    });
+    await kirim("kampanye", daftar);
+  },
+  async konten() {
+    const daftar = baris("isi-konten").map((x) => {
+      const b = x.split("|").map((y) => y.trim());
+      while (b.length < 4) b.push("");
+      if (b.length > 4 || !/^\d{4}-\d{2}-\d{2}$/.test(b[0]) || !["Brand", "Rungkut", "Mawar"].includes(b[1])) {
+        throw new Error(`Baris konten tidak sesuai format "YYYY-MM-DD | akun | format | topik": "${x}"`);
+      }
+      return { tanggal: b[0], akun: b[1], format: b[2], topik: b[3] };
+    });
+    await kirim("konten", daftar);
+  },
+  async igManual() {
+    const daftar = baris("isi-ig-manual").map((x) => {
+      const b = x.split("|").map((y) => y.trim());
+      if (b.length !== 3 || !["Brand", "Rungkut", "Mawar"].includes(b[0]) || !/^\d{4}-\d{2}-\d{2}$/.test(b[1])) {
+        throw new Error(`Baris tidak sesuai format "akun | Senin YYYY-MM-DD | metrik=angka ; …": "${x}"`);
+      }
+      const nilai = {};
+      b[2].split(";").map((y) => y.trim()).filter(Boolean).forEach((p) => {
+        const m = p.match(/^(tayangan|jangkauan|interaksi|kunjungan|klik|pengikut)\s*=\s*(\d+)$/);
+        if (!m) throw new Error(`"${p}" harus metrik=angka tanpa titik (metrik: tayangan, jangkauan, interaksi, kunjungan, klik, pengikut).`);
+        nilai[m[1]] = m[2];
+      });
+      return { akun: b[0], senin: b[1], nilai };
+    });
+    await kirim("ig_manual", daftar);
   },
   async suhu() {
     const s = {};

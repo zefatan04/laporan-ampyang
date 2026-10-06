@@ -409,6 +409,124 @@ function tabMembership(d) {
   return { html: h, setelah: () => {} };
 }
 
+// ---------------------------------------------------------------- tab Sosmed & Campaign
+const METRIK_IG = [["tayangan", "Tayangan"], ["jangkauan", "Jangkauan"], ["interaksi", "Interaksi konten"],
+  ["kunjungan", "Kunjungan profil"], ["klik", "Klik tautan"], ["pengikut", "Pengikut baru"]];
+const daftarCatatan = (xs) => (xs && xs.length ? `<ul class="catatan">${xs.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : "");
+
+function titikIg(harian, kode) {
+  return harian.map((h) => {
+    const [, , dd] = h.tanggal.split("-").map(Number);
+    const st = h[`${kode}_status`];
+    const ket = [st === "ada" ? "" : st, h.libur ? `Libur: ${h.libur}` : "", h.konten.length ? `Konten: ${h.konten.join("; ")}` : ""]
+      .filter(Boolean).join(" · ");
+    return { ...h, label_pendek: `${dd}${h.libur ? "*" : ""}`, label_panjang: h.label, keterangan: ket };
+  });
+}
+
+function grafikIg(i, harian, kode) {
+  const el = document.getElementById(`g-ig-${i}`);
+  if (!el) return;
+  const lama = Chart.getChart(el);
+  if (lama) { grafik.splice(grafik.indexOf(lama), 1); lama.destroy(); }
+  const nama = METRIK_IG.find(([k]) => k === kode)[1];
+  grafikBatang(`g-ig-${i}`, nama, titikIg(harian, kode), (t) => t[kode],
+    (v) => (v == null ? "tidak ada data" : Number(v).toLocaleString("id-ID")));
+}
+
+function kartuKampanye(k) {
+  const dt = k.deteksi;
+  const deteksi = !dt.tersedia ? `<p class="catatan">Tidak diketahui — ${esc(dt.alasan)}.</p>` : `
+    <p>Terdeteksi dari klik tautan &gt; 0: <b>${esc(dt.terdeteksi)}</b> · tanggal isian: <b>${esc(dt.isian)}</b>
+      ${dt.cocok ? `<span class="lencana lulus">cocok</span>` : `<span class="lencana peringatan">beda</span>`}</p>
+    ${dt.peringatan.map((p) => `<p class="awas">⚠ ${esc(p)}</p>`).join("")}${daftarCatatan(dt.catatan)}`;
+  const mi = k.metrik_ig;
+  const metrik = !mi.tersedia ? `<p class="catatan">Tidak diketahui — ${esc(mi.alasan)}.</p>` : `${tabel(mi.baris)}${daftarCatatan(mi.catatan)}`;
+  return `<div class="kartu cek ${dt.tersedia && !dt.cocok ? "peringatan" : ""}">
+    <div class="cek-judul"><span>${esc(k.nama)}</span>
+      <span class="cek-file">${esc(k.periode)} · sasaran ${esc(k.cabang)} · akun IG ${esc(k.akun)} · anggaran ${esc(k.anggaran)}</span></div>
+    <p class="catatan" style="padding:0">Platform: ${esc(k.platform)} · tujuan: ${esc(k.tujuan)} · menu promo: ${esc(k.menu_promo.join(", ") || "-")}</p>
+    <h3 class="sub-judul">Tanggal iklan: data vs isian</h3>${deteksi}
+    <h3 class="sub-judul">Metrik Instagram selama kampanye vs pembanding</h3>${metrik}
+    <h3 class="sub-judul">Biaya per hasil Instagram</h3>
+    <div class="kisi-kartu">${k.biaya_ig.map((b) => kartuAngka(b.judul, b.n)).join("")}</div>
+    <h3 class="sub-judul">Tambahan bill di cabang sasaran vs pembanding</h3>${tabel(k.tambahan_bill)}
+    <h3 class="sub-judul">Biaya iklan per bill tambahan</h3>${tabel(k.biaya_bill)}
+    <h3 class="sub-judul">Korelasi klik harian vs tambahan bill harian</h3>${tabel(k.korelasi)}
+    ${daftarCatatan(k.catatan)}
+  </div>`;
+}
+
+function tabSosmed(d) {
+  const s = d.sosmed;
+  let h = "";
+  const pasang = [];
+  s.akun.forEach((a, i) => {
+    h += `<h2>Instagram akun ${esc(a.akun)}${a.akun === "Brand" ? " (dipakai kedua cabang)" : ""}</h2>`;
+    if (!a.ada) {
+      h += `<div class="kartu kosong">Tidak diketahui — data Instagram akun ${esc(a.akun)} periode ini tidak diunggah.
+        Data ini opsional: unggah CSV Instagram Insights di <a href="#upload">Upload</a>, atau isi total mingguan di
+        <a href="#pengaturan">Pengaturan → Input manual Instagram</a>.</div>`;
+      return;
+    }
+    if (a.manual) h += `<div class="pesan info">Angka akun ini dari <b>input manual</b> mingguan; tanpa rincian harian.</div>`;
+    h += `<div class="kisi-kartu">${a.kartu.map((k) => kartuAngka(k.judul, k.n)).join("")}</div>`;
+    if (a.harian) {
+      const kp = a.klik_positif;
+      h += `<div class="kartu">
+        <div class="pilih-metrik" data-ig="${i}" role="tablist" aria-label="Pilih metrik">${METRIK_IG.map(([k, n], j) =>
+          `<button data-metrik="${k}" aria-selected="${j === 0}">${esc(n)}</button>`).join("")}</div>
+        <div class="grafik"><canvas id="g-ig-${i}"></canvas></div>
+        <p class="catatan">Hari dengan klik tautan &gt; 0: ${esc(kp.hari || "tidak ada")} (dari ${kp.cakupan} hari yang ada data klik).
+          ${kp.tanpa_kampanye ? `<b>Tidak ada kampanye terdaftar untuk akun ini pada ${esc(kp.tanpa_kampanye)}</b>; bila itu iklan, isi di Pengaturan.` : ""}
+          * = hari libur. Batang kosong = tidak tercatat / tidak diunggah.</p>
+        <details><summary>Lihat tabel harian</summary>${tabel(a.harian.map((x) => {
+          const r = { Tanggal: x.label };
+          METRIK_IG.forEach(([k, n]) => {
+            r[n] = x[`${k}_status`] === "ada" ? Number(x[k]).toLocaleString("id-ID") : x[`${k}_status`];
+          });
+          r.Konten = x.konten.join("; ") || "-";
+          r.Libur = x.libur || "-";
+          return r;
+        }))}</details></div>`;
+      pasang.push([i, a.harian]);
+    } else {
+      h += `<p class="catatan">Grafik harian: Tidak diketahui — ${esc(a.harian_alasan)}.</p>`;
+    }
+    h += bagianBanding(a.banding);
+    if (a.manual_vs_harian.length) {
+      h += `<h3 class="sub-judul">Input manual vs CSV harian (minggu yang punya keduanya)</h3><div class="kartu">${tabel(a.manual_vs_harian)}</div>`;
+    }
+  });
+
+  h += `<h2>Kampanye</h2>`;
+  const km = s.kampanye;
+  if (!km.jumlah_terdaftar) {
+    h += `<div class="kartu kosong">Belum ada kampanye terdaftar. Isi nama, tanggal, cabang sasaran, anggaran, dan akun Instagram di
+      <a href="#pengaturan">Pengaturan → Kampanye iklan</a> supaya biaya per klik dan per bill tambahan bisa dihitung.</div>`;
+  } else if (!km.daftar.length) {
+    h += `<div class="kartu kosong">Tidak ada kampanye untuk ${esc(d.cabang)} yang berjalan di periode ini (atau selesai ≤ 4 minggu sebelumnya).</div>`;
+  } else {
+    h += km.daftar.map(kartuKampanye).join("");
+  }
+
+  h += `<h2>Konten periode ini</h2>`;
+  h += s.konten.length ? `<div class="kartu">${tabel(s.konten)}</div>` : `<div class="kartu kosong">${s.jumlah_konten
+    ? "Tidak ada konten terdaftar di periode ini untuk akun cabang ini atau Brand."
+    : 'Belum ada daftar konten. Isi di <a href="#pengaturan">Pengaturan → Daftar konten</a> (opsional).'}</div>`;
+  h += daftarCatatan(s.catatan);
+  return { html: h, setelah: () => pasang.forEach(([i, harian]) => grafikIg(i, harian, "tayangan")) };
+}
+
+document.getElementById("dash-isi").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-metrik]");
+  if (!b) return;
+  const wadah = b.closest("[data-ig]");
+  const i = Number(wadah.dataset.ig);
+  wadah.querySelectorAll("button").forEach((x) => x.setAttribute("aria-selected", x === b));
+  grafikIg(i, keadaan.data.sosmed.akun[i].harian, b.dataset.metrik);
+});
+
 // ---------------------------------------------------------------- kualitas data
 function panelKualitas(d) {
   const q = d.kualitas;
@@ -512,6 +630,7 @@ function render() {
   else if (["makanan", "kudapan", "minuman"].includes(keadaan.tab)) hasil = tabMenu(d, keadaan.tab);
   else if (keadaan.tab === "promo") hasil = tabPromo(d);
   else if (keadaan.tab === "membership") hasil = tabMembership(d);
+  else if (keadaan.tab === "sosmed") hasil = tabSosmed(d);
   else {
     const m = d.menyusul.find((x) => x.kode === keadaan.tab);
     hasil = { html: `<div class="kartu kosong">${esc(m ? m.nama : "Tab ini")} dibangun di tahap ${m ? m.tahap : "berikutnya"}.</div>`, setelah: () => {} };

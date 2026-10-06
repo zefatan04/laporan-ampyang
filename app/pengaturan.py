@@ -15,15 +15,26 @@ BAWAAN = {
     "hari_libur": [{"tanggal": t, "nama": n} for t, n in B.HARI_LIBUR],
     "ramadan": [{"awal": a, "akhir": z} for a, z in B.RAMADAN],
     "hari_libur_terverifikasi": False,
-    "target_omzet": {},
-    "menu_baru": [],
+    "target_omzet": {},  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
+    "menu_baru": [],  # [{"nama": "Tahu Walik", "mulai": "2026-09-01", "tab": "kudapan"}]
     # [{"nama", "mulai", "selesai", "cabang": Rungkut|Mawar|keduanya, "promotion_esb": [...], "menu_promo": [...]}]
     "promo": [],
     # Nama di kolom Promotion ESB yang bukan promo pemasaran (tidak dinilai).
     "promotion_internal": ["Discount Karyawan 10 %", "Discount BOD"],
     # Selisih omzet terhadap pembanding di dalam ±ambang dianggap Netral.
-    "ambang_netral_persen": 5,  # [{"nama": "Tahu Walik", "mulai": "2026-09-01", "tab": "kudapan"}]  # {"Rungkut|2026-10": 250000000} - kosong = tidak ditampilkan
+    "ambang_netral_persen": 5,
+    # [{"nama", "cabang": Rungkut|Mawar|keduanya, "akun": Rungkut|Mawar|Brand, "mulai", "selesai",
+    #   "anggaran": "1500000" (teks desimal), "platform", "tujuan", "menu_promo": [...]}]
+    "kampanye": [],
+    # [{"tanggal", "akun", "format", "topik"}]
+    "konten": [],
+    # Total mingguan disalin dari aplikasi Instagram saat CSV harian tidak bisa diunduh.
+    # [{"akun", "senin": "2026-09-28", "nilai": {"tayangan": 1234, ...}}] - metrik yang tidak diisi tidak ada
+    "ig_manual": [],
 }
+
+AKUN_IG = ("Rungkut", "Mawar", "Brand")
+METRIK_IG = ("tayangan", "jangkauan", "interaksi", "kunjungan", "klik", "pengikut")
 
 
 def _pastikan(con):
@@ -114,6 +125,65 @@ def periksa(kunci: str, nilai):
         if not 0 <= v <= 50:
             raise ValueError("Ambang netral harus 0–50%.")
         return v
+    if kunci == "kampanye":
+        from decimal import Decimal, InvalidOperation
+        hasil = []
+        for x in nilai or []:
+            nama = str(x.get("nama", "")).strip()
+            if not nama:
+                raise ValueError("Nama kampanye kosong.")
+            a, z = date.fromisoformat(x["mulai"]), date.fromisoformat(x["selesai"])
+            if z < a:
+                raise ValueError(f"Kampanye {nama}: tanggal selesai lebih awal dari mulai.")
+            if x.get("cabang") not in ("Rungkut", "Mawar", "keduanya"):
+                raise ValueError(f"Kampanye {nama}: cabang sasaran harus Rungkut, Mawar, atau keduanya.")
+            if x.get("akun") not in AKUN_IG:
+                raise ValueError(f"Kampanye {nama}: akun Instagram harus Rungkut, Mawar, atau Brand.")
+            angg = str(x.get("anggaran", "")).strip()
+            if angg:
+                try:
+                    d = Decimal(angg)
+                except InvalidOperation as e:
+                    raise ValueError(f"Kampanye {nama}: anggaran '{angg}' bukan angka (tulis tanpa titik, mis. 1500000).") from e
+                if d < 0:
+                    raise ValueError(f"Kampanye {nama}: anggaran tidak boleh negatif.")
+                angg = str(d)
+            bersih = lambda xs: [" ".join(str(v).split()) for v in (xs or []) if str(v).strip()]
+            hasil.append({"nama": nama, "cabang": x["cabang"], "akun": x["akun"], "mulai": x["mulai"], "selesai": x["selesai"],
+                          "anggaran": angg, "platform": str(x.get("platform", "")).strip(),
+                          "tujuan": str(x.get("tujuan", "")).strip(), "menu_promo": bersih(x.get("menu_promo"))})
+        return hasil
+    if kunci == "konten":
+        hasil = []
+        for x in nilai or []:
+            date.fromisoformat(x["tanggal"])
+            if x.get("akun") not in AKUN_IG:
+                raise ValueError(f"Konten {x['tanggal']}: akun harus Rungkut, Mawar, atau Brand.")
+            hasil.append({"tanggal": x["tanggal"], "akun": x["akun"], "format": str(x.get("format", "")).strip(),
+                          "topik": str(x.get("topik", "")).strip()})
+        return sorted(hasil, key=lambda x: x["tanggal"])
+    if kunci == "ig_manual":
+        hasil, kunci_ada = [], set()
+        for x in nilai or []:
+            t = date.fromisoformat(x["senin"])
+            if t.weekday() != 0:
+                raise ValueError(f"Input manual Instagram: {x['senin']} bukan hari Senin.")
+            if x.get("akun") not in AKUN_IG:
+                raise ValueError(f"Input manual {x['senin']}: akun harus Rungkut, Mawar, atau Brand.")
+            if (x["akun"], x["senin"]) in kunci_ada:
+                raise ValueError(f"Input manual {x['akun']} minggu {x['senin']} ditulis dua kali.")
+            kunci_ada.add((x["akun"], x["senin"]))
+            isi = {}
+            for m, v in (x.get("nilai") or {}).items():
+                if m not in METRIK_IG:
+                    raise ValueError(f"Metrik '{m}' tidak dikenal. Pakai: {', '.join(METRIK_IG)}.")
+                if not str(v).isdigit():
+                    raise ValueError(f"Input manual {x['akun']} {x['senin']}: {m} = '{v}' harus bilangan bulat tanpa titik.")
+                isi[m] = int(v)
+            if not isi:
+                raise ValueError(f"Input manual {x['akun']} {x['senin']}: belum ada angka yang diisi.")
+            hasil.append({"akun": x["akun"], "senin": x["senin"], "nilai": isi})
+        return sorted(hasil, key=lambda x: (x["senin"], x["akun"]))
     if kunci == "kategori":
         if set(nilai) != set(BAWAAN["kategori"]):
             raise ValueError("Kunci kategori tidak lengkap.")

@@ -162,3 +162,33 @@ pasangan bill ESB, termasuk 1 nominal Rp592.900 yang dicatat 2× (14:37
 dan 15:01) untuk member yang sama padahal di ESB hanya ada 1 bill; 5 lainnya
 dicatat AISHA pukul 15:20–15:24 pada hari yang sama dengan tanda
 pendaftaran beruntun di log Mawar.
+
+## Instagram & kampanye (tahap 8, 6 Okt 2026)
+
+Format terbukti dari 24 CSV asli akun Brand (17–30 Agu, 14–27 Sep 2026):
+UTF-16 LE + BOM, `sep=,`, judul metrik, `"Tanggal","Primary"`, satu baris
+per hari `YYYY-MM-DDT00:00:00`. Judul yang dikenal: Tayangan, Jangkauan,
+Interaksi konten, Kunjungan Profil Instagram, Klik tautan Instagram,
+Pengikut Instagram. Judul lain, header lain, jam selain 00:00, atau nilai
+bukan bilangan bulat → file ditolak (tidak ditebak).
+
+| Hal | Keputusan |
+|---|---|
+| Akun | Dipilih di form upload (Brand/Rungkut/Mawar); satu unggahan = satu akun. Tab Sosmed cabang X menampilkan akun X + akun Brand. |
+| Gabung | Satu nilai berlaku per akun/metrik/tanggal. Tanggal tumpang tindih bernilai sama dipakai sekali. Beda nilai di dalam satu unggahan → tidak bisa disimpan. Beda dengan data tersimpan → konflik ditampilkan, butuh centang "ganti"; nilai unggahan terbaru berlaku. Menghapus unggahan mengembalikan nilai unggahan sebelumnya. |
+| Pengikut | Hari tanpa baris = "tidak tercatat", bukan 0. Total diberi label "batas bawah". Rentang file Pengikut diambil dari file metrik lain akun yang sama di unggahan yang sama yang bersinggungan (ekspor Meta selalu satu rentang). |
+| Hari kosong lain | Di dalam rentang unggahan = "tidak tercatat"; di luar = "tidak diunggah". Total yang kehilangan hari = "batas bawah"; biaya per hasil = "batas atas". |
+| Jangkauan | Jangkauan harian **tidak dijumlah** (akun yang sama terhitung berulang). Kartu = rata-rata per hari. Di kampanye, Σ jangkauan harian dipakai untuk biaya per 1.000 dengan catatan bahwa biaya per akun unik lebih tinggi. |
+| Input manual | Total mingguan per akun di Pengaturan, berlabel "input manual". Bulan = Σ minggu yang Seninnya di bulan itu. Jangkauan manual tidak dijumlah antar minggu. Bila CSV harian minggu yang sama ada, CSV dipakai dan selisihnya ditampilkan. |
+| Vs periode sebelumnya | Selisih hanya bila kedua periode lengkap dan jenis datanya sama. |
+| Deteksi tanggal iklan | Klik tautan > 0, diperiksa 14 hari sebelum s/d 14 hari sesudah tanggal isian. Beda → peringatan. Bila ada klik sebelum kampanye, dicatat bahwa klik bisa dari tautan bio. |
+| Pembanding kampanye | Sama dengan promo: hari yang sama dalam seminggu, A = 4 minggu sebelum, B = + 4 minggu sesudah. Libur keluar dari hari kampanye dan pembanding; hari kampanye lain (akun/cabang sama) keluar dari pembanding. Bila data sebelum tidak ada, B ditulis "hanya dari 4 minggu sesudah". |
+| Biaya per bill tambahan | Rentang: **dibebankan penuh** = anggaran ÷ tambahan bill satu cabang; **dibagi** = anggaran ÷ Σ tambahan bill semua cabang sasaran (A dengan A, B dengan B). Tambahan ≤ 0 → "Tidak diketahui". Sasaran dua cabang tapi data satu cabang tidak ada → konversi gabungan "batas bawah". |
+| Korelasi | Pearson klik harian vs tambahan bill harian (pembanding A), minimal 7 hari; ditulis bukan bukti sebab-akibat. |
+| Meta Ads Manager | Belum diolah: belum ada contoh file. |
+
+Temuan data asli (akun Brand): klik tautan 300–580 per hari pada 18–30 Agu
+lalu 0 sepanjang 14–27 Sep; jangkauan harian ±8.000–16.500 di Agustus vs
+±60–650 di September. Pola ini seperti iklan berbayar 18–30 Agu (30 Agu
+sebagian hari). Belum ada kampanye terdaftar untuk tanggal itu, dan data ESB
+Agustus belum diunggah, jadi tambahan bill-nya belum bisa dihitung.

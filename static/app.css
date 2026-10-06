@@ -197,3 +197,12 @@ h2.tanpa-jarak { margin-top: 0; }
 code { background: var(--abu-muda); padding: 0 .25rem; border-radius: 4px; }
 .isian-penuh, .isian-pendek { font: inherit; padding: .4rem .5rem; border: 1px solid var(--garis); border-radius: 8px; color: var(--teks); }
 .isian-pendek { max-width: 8rem; }
+
+/* ---------- tab Sosmed ---------- */
+.pilih-metrik { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .6rem; }
+.pilih-metrik button {
+  font: inherit; font-size: .85rem; padding: .3rem .65rem; border-radius: 999px;
+  border: 1px solid var(--garis); background: #fff; color: var(--teks); cursor: pointer;
+}
+.pilih-metrik button[aria-selected=true] { background: var(--terakota); border-color: var(--terakota); color: #fff; }
+p.awas { color: var(--merah); margin: .3rem 0; font-size: .9rem; }

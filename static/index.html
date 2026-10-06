@@ -25,8 +25,8 @@
 <!-- ================= UPLOAD ================= -->
 <section id="hal-upload" class="hal" hidden>
   <h1>Upload data</h1>
-  <p class="sub">Unggah Bill Report dan Sales Menu COGS Report (.xlsx) untuk periode yang sama, dan/atau CSV ekspor
-    web loyalty Keluarga Ampyang. Semua file boleh diunggah sekaligus; jenisnya dikenali dari isi. Satu file ESB boleh
+  <p class="sub">Unggah Bill Report dan Sales Menu COGS Report (.xlsx) untuk periode yang sama, CSV ekspor
+    web loyalty Keluarga Ampyang, dan/atau CSV Instagram Insights. Semua file boleh diunggah sekaligus; jenisnya dikenali dari isi. Satu file ESB boleh
     berisi Rungkut dan Mawar sekaligus. Data baru disimpan setelah Anda membaca laporan validasi dan menekan <b>Simpan</b>.</p>
 
   <form id="form-unggah" class="kartu">
@@ -40,7 +40,17 @@
       </label>
       <label>Tanggal mulai <input type="date" name="awal" required></label>
       <label>Tanggal akhir <input type="date" name="akhir" required></label>
+      <label>Akun Instagram (untuk CSV Instagram)
+        <select name="akun">
+          <option value="">— pilih bila mengunggah CSV Instagram —</option>
+          <option>Brand</option>
+          <option>Rungkut</option>
+          <option>Mawar</option>
+        </select>
+      </label>
     </div>
+    <p class="catatan" style="padding:0">CSV Instagram membawa tanggalnya sendiri (satu baris per hari), jadi tanggal mulai/akhir di atas
+      hanya berlaku untuk ESB dan loyalty. Nama akun tidak ada di isi file, jadi pilih akunnya. Satu unggahan = satu akun Instagram.</p>
     <label class="zona" id="zona">
       <input type="file" name="files" multiple accept=".xlsx,.csv" id="input-file">
       <span class="zona-judul">Tarik file .xlsx / .csv ke sini, atau klik untuk memilih</span>
@@ -66,6 +76,8 @@
   <div id="riwayat-minggu"></div>
   <h2>Periode tersimpan</h2>
   <div id="riwayat-periode"></div>
+  <h2>Instagram (opsional)</h2>
+  <div id="riwayat-ig"></div>
 </section>
 
 <!-- ================= DASHBOARD ================= -->
@@ -97,7 +109,7 @@
 <!-- ================= PENGATURAN ================= -->
 <section id="hal-pengaturan" class="hal" hidden>
   <h1>Pengaturan</h1>
-  <p class="sub">Perubahan langsung berlaku ke semua data, termasuk data lama. Anggaran iklan per kampanye ditambahkan di tahap 8.</p>
+  <p class="sub">Perubahan langsung berlaku ke semua data, termasuk data lama.</p>
 
   <div class="kartu" id="set-libur">
     <h2 class="tanpa-jarak">Hari libur nasional &amp; Ramadan</h2>
@@ -128,6 +140,36 @@
     <label>Ambang netral (%): selisih omzet terhadap pembanding di dalam ± ambang dianggap Netral
       <input id="isi-ambang" type="number" min="0" max="50" step="0.5" class="isian-pendek"></label>
     <div class="aksi"><button class="tombol utama" data-simpan="promo">Simpan promo</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Kampanye iklan</h2>
+    <p class="catatan">Satu baris per kampanye:
+      <code>Nama | mulai YYYY-MM-DD | selesai YYYY-MM-DD | Rungkut/Mawar/keduanya | anggaran | akun IG (Brand/Rungkut/Mawar) | platform | tujuan | menu promo</code>.
+      Anggaran ditulis tanpa titik (mis. <code>1500000</code>); boleh kosong, tapi biaya per klik/bill tambahan lalu tidak bisa dihitung.
+      Platform, tujuan, dan menu promo boleh kosong; beberapa menu dipisah titik koma.
+      Contoh: <code>Iklan Serbuk Hemat | 2026-09-15 | 2026-09-28 | keduanya | 1500000 | Brand | Instagram Ads | Kunjungan profil | Mie Goreng Ayam Jamur</code></p>
+    <textarea rows="4" id="isi-kampanye"></textarea>
+    <div class="aksi"><button class="tombol utama" data-simpan="kampanye">Simpan kampanye</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Daftar konten (opsional)</h2>
+    <p class="catatan">Satu baris per postingan: <code>YYYY-MM-DD | akun (Brand/Rungkut/Mawar) | format | topik</code>.
+      Contoh: <code>2026-09-25 | Brand | Reels | Menu baru Tahu Walik</code>. Ditampilkan di tabel harian tab Sosmed.</p>
+    <textarea rows="4" id="isi-konten"></textarea>
+    <div class="aksi"><button class="tombol utama" data-simpan="konten">Simpan konten</button><span class="hasil"></span></div>
+  </div>
+
+  <div class="kartu">
+    <h2 class="tanpa-jarak">Input manual Instagram (bila CSV tidak bisa diunduh)</h2>
+    <p class="catatan">Total satu minggu (Senin–Minggu) disalin dari aplikasi Instagram / Meta Business Suite. Satu baris per akun per minggu:
+      <code>akun | Senin YYYY-MM-DD | tayangan=… ; jangkauan=… ; interaksi=… ; kunjungan=… ; klik=… ; pengikut=…</code>.
+      Metrik yang tidak diketahui jangan ditulis. Angka tanpa titik.
+      Contoh: <code>Brand | 2026-09-28 | tayangan=3800 ; jangkauan=900 ; pengikut=4</code>.
+      Di dashboard angka ini berlabel "input manual". Bila CSV harian minggu yang sama diunggah, CSV yang dipakai dan selisihnya ditampilkan.</p>
+    <textarea rows="4" id="isi-ig-manual"></textarea>
+    <div class="aksi"><button class="tombol utama" data-simpan="igManual">Simpan input manual</button><span class="hasil"></span></div>
   </div>
 
   <div class="kartu">
